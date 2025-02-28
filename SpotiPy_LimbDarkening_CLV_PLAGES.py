@@ -678,16 +678,16 @@ myemail = '----'
 # set directionary where the output should appear/ where you run the script
 mydir = '----'
 
-# NOAA of the to be observed active region
-NOAA = 12065
+# NOAA of the to-be-observed active region
+NOAA = ---
 # Latitude [deg]
-latitude = -18
+latitude = ---
 # put either the wavelength (e.g. Fe_1673A, or Halpha, ... ) or the oberservable  (e.g. 'linewidth','magnetogram',...)
-wavelength = 'AIA_1700A'
+wavelength = '---'
 # the reference SDO HMI series with limb-darkneing removed (needed to create the masks)
-No_LD_Series = 'aia.lev1_uv_24s' # DO NOT CHANGE!
+No_LD_Series = '--' # DO NOT CHANGE!
 # the data series in which CLV shall be studied:
-LimbDark_Series = 'aia.lev1_uv_24s'  # set to the series you want to download/use
+LimbDark_Series = '---'  # set to the series you want to download/use
 
 
 ################## Time frame: ##############
@@ -716,13 +716,10 @@ y_start_position = 300   #260
 frame_size = 700
 
 # Specifiy threshold value (umbra/penumbra)
-plage_threshold = 225
+penumbra_threshold = 175
+umbra_threshold = 83
 
-penumbra_threshold = 225
-umbra_threshold = 229
-AIA_1700A
-#penumbra_threshold = 175
-#umbra_threshold = 83
+plage_threshold = 225 
 
 # if data was already downloaded, please set to FALSE
 download_needed = False
