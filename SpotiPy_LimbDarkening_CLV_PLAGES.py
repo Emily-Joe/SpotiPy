@@ -706,7 +706,7 @@ time_stamps = ['2014-11-23T21:00:00', '2014-11-23T22:00:00', '2014-11-23T23:00:0
 
 use_time_stamps = False #set to TRUE if you want to use the array above for download
 
-###############################loessnitz@uni-potsdam.de#############
+############################################
 
 # using the solar monitor, estimate the location of the first appearance of the active region [arcsec]
 x_start_position = 750  #-936
