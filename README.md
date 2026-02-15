@@ -6,7 +6,7 @@
 
 **SpotiPy** is a modular Python framework for automated analysis of sunspot center-to-limb variations (CLV). It extends standard solar pipelines to support multi-wavelength and multi-observable analysis, with a focus on studying physical asymmetries between the **Leading (West)** and **Following (East)** hemispheres of solar active regions.
 
-The package automatically downloads, aligns, segments, and analyzes data for **five solar observables**:
+The package automatically downloads, aligns, segments, and analyzes data for five solar observables:
 
 1. **Intensity ($I_c$)** — SDO/HMI Continuum
 2. **Magnetogram ($M$)** — SDO/HMI LOS Magnetic Field
