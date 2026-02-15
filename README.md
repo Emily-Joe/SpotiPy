@@ -98,7 +98,7 @@ The pipeline is controlled through a simple text-based configuration file defini
 
 ## Avilable Data for Download
 
-The downloading module enables the search and retrieval of data from public archives such as the Solar Dynamics Observatory’s HMI and AIA instruments. It provides a streamlined interface built on `sunpy`'s Fido client. Retrieval of HMI and AIA data requires prior registration via email with the JSOC data center hosting the SDO data. Visit [JSOC Email Registration][http://jsoc.stanford.edu/ajax/register_email.html] and register your email adress. and register your email address. This email address must also be specified in the configuration file `params.txt`. 
+The downloading module enables the search and retrieval of data from public archives such as the Solar Dynamics Observatory’s HMI and AIA instruments. It provides a streamlined interface built on `sunpy`'s Fido client. Retrieval of HMI and AIA data requires prior registration via email with the JSOC data center hosting the SDO data. Visit [JSOC Email Registration](http://jsoc.stanford.edu/ajax/register_email.html) and register your email adress. This email address must also be specified in the configuration file `params.txt`. 
 
 The following datasets are available for download: 
 
@@ -117,7 +117,7 @@ At Level 1, AIA observables cover three wavelength ranges (soft X-ray/extreme UV
 
 | Soft Xray - Extreme UV (euv), 12s | UV (uv), 24s            | visible (vis), 1h     |
 |-----------------------------------|-------------------------|-----------------------|
-| aia.lev1_euv_12s[94]              | aia.lev1_uv_12s[1600]   |aia.lev1_vis_1h[4500]  |
+| aia.lev1_euv_12s[94]              | aia.lev1_uv_12s[1600]   |aia.lev1_vis_1h[4500]  |
 | aia.lev1_euv_12s[131]             | aia.lev1_uv_12s[1700]   |                       |
 | aia.lev1_euv_12s[193]             |                         |                       |
 | aia.lev1_euv_12s[211]             |                         |                       |
