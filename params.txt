@@ -1,0 +1,36 @@
+# ==========================================
+# SpotiPy Configuration File
+# ==========================================
+
+# --- Target Settings ---
+NOAA_NUMBER = 12673
+START_DATE = 2017-09-06T12:00:00
+DAYS = 1
+CADENCE = 24
+EMAIL = your.email@example.com
+
+# --- Geometry & Tracking ---
+# Where the spot is roughly located (in arcsec) at the start date
+X_START_ARCSEC = -927
+Y_START_ARCSEC = 290
+
+# Size of the crop window (pixels)
+FRAME_SIZE = 400
+
+# --- Segmentation Thresholds (0-255 Scale) ---
+# Pixel intensity values for identifying features
+UMBRA_MIN = 10
+UMBRA_MAX = 55
+
+PENUMBRA_MIN = 75
+PENUMBRA_MAX = 120
+
+# --- Plage & Quiet Sun ---
+# Percentage tolerance for Quiet Sun (e.g., within 15% of median)
+QUIET_SUN_TOL_PCT = 15.0
+
+# How much brighter than median is Plage? (e.g., > 20% brighter)
+PLAGE_EXCESS_PCT = 20.0
+
+# Minimum area (in pixels) to count a Plage region
+MIN_PLAGE_AREA = 450
