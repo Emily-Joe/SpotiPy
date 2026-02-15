@@ -86,7 +86,7 @@ For full end-to-end analysis (**Download → Align → Segment → Analyze → P
 python3 examples/run_analysis.py --config params.txt
 ```
 
-### Configuration File (`params.txt`)
+## Configuration File (`params.txt`)
 
 The pipeline is controlled through a simple text-based configuration file defining the physical and observational parameters:
 
@@ -94,8 +94,36 @@ The pipeline is controlled through a simple text-based configuration file defini
 * **START_DATE** — ISO timestamp (e.g. `2017-09-06T12:00:00`)
 * **EMAIL** — Required for JSOC data access
 * **CADENCE** — Time step in hours between observations
-
 ---
+
+## Avilable Data for Download
+
+The downloading module enables the search and retrieval of data from public archives such as the Solar Dynamics Observatory’s HMI and AIA instruments. It provides a streamlined interface built on `sunpy`'s Fido client. Retrieval of HMI and AIA data requires prior registration via email with the JSOC data center hosting the SDO data. Visit [JSOC Email Registration][http://jsoc.stanford.edu/ajax/register_email.html] and register your email adress. and register your email address. This email address must also be specified in the configuration file `params.txt`. 
+
+The following datasets are available for download: 
+
+1. HMI Observables:
+HMI generally provides data series with cadences of 45 or 720 seconds. It offers continuum intensity measurements in the region of the Fe I absorption line at 6173 Å, as well as a version with the effects of limb darkening removed. The limb-darkening–corrected dataset is only available at a cadence of 12 minutes. Additional observables include the line depth and line width of a Gaussian absorption line profile for the 6173.3 Å line, as well as line-of-sight (LOS) magnetograms and Dopplergrams.
+
+| Continuum Intensity (Ic)   | Linewidth (Lw) | Linedepth (Ld) | LOS Magnetograms (M) | LOS Dopplergrams (V) |
+| ---------------------------|----------------|----------------|----------------------|----------------------|
+| hmi.Ic_45s                 | hmi.Lw_45s     | hmi.Ld_45s     | hmi.M_45s            | hmi.V_45s            |
+| hmi.Ic_720s                | hmi.Lw_720s    | hmi.Ld_720s    | hmi.M_720s           | hmi.V_720s           |
+| hmi.Ic_nolimbDark_720s     |                |                |                      |                      |
+| hmi.Ic_nolimbDark_720s_nrt |                |                |                      |                      |
+
+2. AIA Observables:
+At Level 1, AIA observables cover three wavelength ranges (soft X-ray/extreme UV, UV, and visible), with ten total wavelength channels. The wavelengths are given in angstroms at the end of each series name. Each wavelength range is available at different cadences: every 12 seconds for EUV, every 24 seconds for UV, and once per hour for the visible range.
+
+| Soft Xray - Extreme UV (euv), 12s | UV (uv), 24s            | visible (vis), 1h     |
+|-----------------------------------|-------------------------|-----------------------|
+| aia.lev1_euv_12s[94]              | aia.lev1_uv_12s[1600]   |aia.lev1_vis_1h[4500]  |
+| aia.lev1_euv_12s[131]             | aia.lev1_uv_12s[1700]   |                       |
+| aia.lev1_euv_12s[193]             |                         |                       |
+| aia.lev1_euv_12s[211]             |                         |                       |
+| aia.lev1_euv_12s[304]             |                         |                       |
+| aia.lev1_euv_12s[335]             |                         |                       |
+
 
 ## Output Structure
 
@@ -114,7 +142,7 @@ SpotiPy automatically organizes outputs into a structured directory tree:
 
 If you use this software in your research, please cite the associated JOSS paper:
 
-> Lößnitz, E.J., & Sumra, S. (2026). *SpotiPy: A Modular Python Pipeline for Solar Spot Analysis*. Journal of Open Source Software, X(X), XXXX.
+> Sumra, S. & Lößnitz, E.J. (2026). *SpotiPy: A Modular Python Pipeline for Solar Spot Analysis*. Journal of Open Source Software, X(X), XXXX.
 
 ---
 
