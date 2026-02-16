@@ -102,7 +102,8 @@ The downloading module enables the search and retrieval of data from public arch
 
 The following datasets are available for download: 
 
-1. HMI Observables:
+### 1. HMI Observables:
+   
 HMI generally provides data series with cadences of 45 or 720 seconds. It offers continuum intensity measurements in the region of the Fe I absorption line at 6173 Å, as well as a version with the effects of limb darkening removed. The limb-darkening–corrected dataset is only available at a cadence of 12 minutes. Additional observables include the line depth and line width of a Gaussian absorption line profile for the 6173.3 Å line, as well as line-of-sight (LOS) magnetograms and Dopplergrams.
 
 | Continuum Intensity (Ic)   | Linewidth (Lw) | Linedepth (Ld) | LOS Magnetograms (M) | LOS Dopplergrams (V) |
@@ -112,13 +113,14 @@ HMI generally provides data series with cadences of 45 or 720 seconds. It offers
 | hmi.Ic_nolimbDark_720s     |                |                |                      |                      |
 | hmi.Ic_nolimbDark_720s_nrt |                |                |                      |                      |
 
-2. AIA Observables:
+### 2. AIA Observables:
+   
 At Level 1, AIA observables cover three wavelength ranges (soft X-ray/extreme UV, UV, and visible), with ten total wavelength channels. The wavelengths are given in angstroms at the end of each series name. Each wavelength range is available at different cadences: every 12 seconds for EUV, every 24 seconds for UV, and once per hour for the visible range.
 
 | Soft Xray - Extreme UV (euv), 12s | UV (uv), 24s            | visible (vis), 1h     |
 |-----------------------------------|-------------------------|-----------------------|
-| aia.lev1_euv_12s[94]              | aia.lev1_uv_12s[1600]   |aia.lev1_vis_1h[4500]  |
-| aia.lev1_euv_12s[131]             | aia.lev1_uv_12s[1700]   |                       |
+| aia.lev1_euv_12s[94]              | aia.lev1_uv_24s[1600]   |aia.lev1_vis_1h[4500]  |
+| aia.lev1_euv_12s[131]             | aia.lev1_uv_24s[1700]   |                       |
 | aia.lev1_euv_12s[193]             |                         |                       |
 | aia.lev1_euv_12s[211]             |                         |                       |
 | aia.lev1_euv_12s[304]             |                         |                       |
