@@ -138,7 +138,7 @@ def download_data(start_time, duration_days, instrument='hmi', wavelength=None, 
     result = Fido.search(*search_attrs)
 
     if len(result) == 0:
-        print(f"⚠️  No data found for {series_name}. Check your dates or cadence.")
+        print(f"Error: No data found for {series_name}. Check your dates or cadence.")
         return []
 
     print(f"[Found] {len(result)} records. Downloading to {output_dir}...")
