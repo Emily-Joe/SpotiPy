@@ -12,6 +12,7 @@ from .aligning import align_images
 from .processing import remove_limb_darkening
 from .segmentation import get_masks
 from .tracking import track_spots
+from .gui_tools import get_manual_coordinates
 
 __all__ = [
     "download_data",
@@ -19,4 +20,5 @@ __all__ = [
     "remove_limb_darkening",
     "get_masks",
     "track_spots",
+    "get_manual_coordinates"
 ]
