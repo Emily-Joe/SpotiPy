@@ -1,5 +1,5 @@
 """
-Processing Module
+Limb Dark Removal Module
 -----------------
 This module contains tools for correcting solar data artifacts,
 specifically removing limb darkening using radial profiles.
