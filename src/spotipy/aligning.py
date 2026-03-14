@@ -2,19 +2,31 @@
 Alignment Module
 ----------------
 This module handles the co-alignment of solar images (e.g., AIA to HMI)
-using WCS reprojection.
+using WCS reprojection. It takes the file paths and saving the aligned
+output directly.
 """
 
+import os
 import warnings
 from astropy.wcs import WCS
 from astropy.io import fits
 from reproject import reproject_interp
-import numpy as np
 
-# RENAMED: align_aia_to_hmi -> align_images (Matches __init__.py)
-def align_images(aia_path, hmi_path, output_path=None):
+def read_fits(path):
+    """To read SDO FITS files which may have data in index 0 or 1."""
+    try:
+        with fits.open(path) as hdul:
+            if len(hdul) > 1 and hdul[1].data is not None:
+                return hdul[1].data, hdul[1].header
+            return hdul[0].data, hdul[0].header
+    except Exception as e:
+        print(f"Error reading {path}: {e}")
+        return None, None
+
+def align_images(aia_path, hmi_path, out_path):
     """
-    Reprojects an AIA image to match the geometry of an HMI image.
+    Reprojects an AIA FITS file to match the geometry of an HMI FITS file,
+    saving the result to disk.
 
     Parameters
     ----------
@@ -22,38 +34,43 @@ def align_images(aia_path, hmi_path, output_path=None):
         Path to the source AIA FITS file.
     hmi_path : str
         Path to the reference HMI FITS file.
-    output_path : str, optional
+    out_path : str
         Path to save the aligned FITS file.
 
     Returns
     -------
-    aligned_data : np.ndarray
-        The AIA data reprojected to the HMI grid.
-    header : astropy.io.fits.Header
-        The new header for the aligned image.
+    bool
+        True if successful or file already exists, False if it failed.
     """
 
-    with fits.open(aia_path) as hdul_a, fits.open(hmi_path) as hdul_h:
-        data_a = hdul_a[1].data if len(hdul_a) > 1 and hdul_a[1].data is not None else hdul_a[0].data
-        header_a = hdul_a[1].header if len(hdul_a) > 1 and hdul_a[1].data is not None else hdul_a[0].header
+    # 1. Skip if already done
+    if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+        return True
 
-        data_h = hdul_h[1].data if len(hdul_h) > 1 and hdul_h[1].data is not None else hdul_h[0].data
-        header_h = hdul_h[1].header if len(hdul_h) > 1 and hdul_h[1].data is not None else hdul_h[0].header
+    # 2. Read the files
+    a_dat, a_hdr = read_fits(aia_path)
+    h_dat, h_hdr = read_fits(hmi_path)
 
-    wcs_a = WCS(header_a)
-    wcs_h = WCS(header_h)
+    if a_dat is None or h_dat is None:
+        print(f"Failed to read input files for alignment.")
+        return False
 
-    print(f"Reprojecting AIA to match HMI grid ({data_h.shape})...")
+    # 3. Create WCS objects
+    wcs_a = WCS(a_hdr)
+    wcs_h = WCS(h_hdr)
 
+    print(f"Reprojecting {os.path.basename(aia_path)} to HMI grid...")
+
+    # 4. Perform the reprojection
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        aligned_data, _ = reproject_interp((data_a, wcs_a), wcs_h, shape_out=data_h.shape)
+        reproj, _ = reproject_interp((a_dat, wcs_a), wcs_h, shape_out=h_dat.shape)
 
-    new_header = header_h.copy()
-    new_header['HISTORY'] = 'Aligned to HMI using SpotiPy'
+    # 5. Create the new header based on HMI
+    new_hdr = h_hdr.copy()
+    new_hdr['HISTORY'] = 'AIA reprojected to HMI grid using SpotiPy'
 
-    if output_path:
-        fits.writeto(output_path, aligned_data, new_header, overwrite=True)
-        print(f"Saved aligned image to: {output_path}")
+    # 6. Save the new FITS file
+    fits.writeto(out_path, reproj, new_hdr, overwrite=True)
 
-    return aligned_data, new_header
+    return True
