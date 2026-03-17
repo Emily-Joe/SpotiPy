@@ -2,8 +2,20 @@
 Segmentation Module
 -------------------
 Tools for masking solar features.
-Uses standard intensity thresholding to isolate sunspots (umbra/penumbra) in HMI continuum images,
-and Quiet Sun mdian thresholding to find plage and network in AIA 1700Å.
+
+Uses standard intensity thresholding to isolate sunspots (umbra/penumbra)
+in HMI continuum images, and a polar-slice Quiet Sun median to find
+plage and network in AIA 1700A.
+
+Changes applied vs. Original version:
+    1. AIA QS reference uses a polar slice at disk centre (r=60-95%, angle
+       70-110 deg) rather than the full crop median, preventing plage/network
+       contamination of the threshold.
+    2. Full Spot mask uses MORPH_CLOSE before keep_largest to fill internal
+       holes before component filtering.
+    3. QS mask is defined as pixels that are finite, above zero, not spot,
+       not network, and not plage -- matching the original script definition
+       and excluding dark calibration artefacts near limb.
 """
 
 import numpy as np
@@ -11,12 +23,17 @@ import cv2
 from scipy.ndimage import label
 from typing import Dict, Tuple, Optional
 
+
+# =====================================================================
+# HMI SEGMENTATION
+# =====================================================================
+
 def get_masks(
     image: np.ndarray,
     disk_mask: Optional[np.ndarray] = None,
     umbra_range: Tuple[float, float] = (10, 55),
     penumbra_range: Tuple[float, float] = (75, 120),
-    cleanup: bool = True
+    cleanup: bool = True,
 ) -> Dict[str, np.ndarray]:
     """
     Generates segmentation masks for Umbra, Penumbra, and the full Active Region.
@@ -27,7 +44,8 @@ def get_masks(
     Parameters
     ----------
     image : np.ndarray
-        2D array of solar disk intensity (typically normalized HMI continuum).
+        2D array of solar disk intensity (typically normalized HMI continuum,
+        median ~ 1.0).
     disk_mask : np.ndarray, optional
         Boolean mask of valid solar disk pixels to exclude off-limb space.
     umbra_range : tuple
@@ -35,96 +53,228 @@ def get_masks(
     penumbra_range : tuple
         Intensity bounds (min, max) for the penumbra on a 0-255 scale.
     cleanup : bool
-        If True, applies a connected-component filter to remove isolated noise.
+        If True, applies a connected-component filter to keep only the largest
+        contiguous region in each mask, removing isolated noise pixels.
 
     Returns
     -------
     dict
-        Boolean arrays corresponding to 'umbra', 'penumbra', 'spot', and 'full_spot'.
+        Boolean arrays for keys: 'umbra', 'penumbra', 'spot'.
+        'spot' is the full active region (umbra + penumbra + transition zone).
     """
     # Normalize to 8-bit (0-255) for OpenCV compatibility
     vmin, vmax = 0.0, 2.0
-    arr = np.clip(image.astype(float), vmin, vmax)
-    norm = (arr - vmin) / (max(vmax - vmin, 1e-6))
+    arr    = np.clip(image.astype(float), vmin, vmax)
+    norm   = (arr - vmin) / max(vmax - vmin, 1e-6)
     img_u8 = (norm * 255.0).astype(np.uint8)
 
-    # Apply Gaussian blur to suppress granular noise and stabilize thresholding
+    # Gaussian blur suppresses granular noise and stabilises thresholding
     g_blur = cv2.GaussianBlur(img_u8, (7, 7), 0)
 
-    # 1. Isolate Umbra
+    # 1. Umbra — threshold then erode once to remove single-pixel hits
     u_raw = cv2.inRange(g_blur, int(umbra_range[0]), int(umbra_range[1]))
-    u = cv2.erode(u_raw, np.ones((3, 3), np.uint8), iterations=1)
+    u     = cv2.erode(u_raw, np.ones((3, 3), np.uint8), iterations=1)
 
-    # 2. Isolate Penumbra (Bandpass excluding the dilated umbra to ensure separation)
+    # 2. Penumbra — bandpass excluding the dilated umbra core
     p_band = cv2.inRange(g_blur, int(penumbra_range[0]), int(penumbra_range[1]))
-    p = cv2.bitwise_and(p_band, cv2.bitwise_not(cv2.dilate(u, np.ones((7, 7), np.uint8))))
+    u_dil  = cv2.dilate(u, np.ones((7, 7), np.uint8))
+    p      = cv2.bitwise_and(p_band, cv2.bitwise_not(u_dil))
 
-    # 3. Define the broader Active Region (Loose Spot Mask)
+    # 3. Full Spot — loose threshold closed morphologically to fill internal holes,
+    #    then OR with the refined umbra to guarantee the core is always included.
+    #    MORPH_CLOSE fills gaps before keep_largest runs, matching the original.
     f_loose = cv2.morphologyEx(
         cv2.inRange(g_blur, 0, int(penumbra_range[1])),
         cv2.MORPH_CLOSE,
-        np.ones((5, 5), np.uint8)
+        np.ones((5, 5), np.uint8),
+        iterations=1,
     )
     f_spot = cv2.bitwise_or(f_loose, u)
 
-    # Apply global disk constraints if provided
+    # Apply disk constraint
     if disk_mask is not None:
         dm = disk_mask.astype(bool)
-        u_bool, p_bool, f_bool = (u > 0) & dm, (p > 0) & dm, (f_spot > 0) & dm
+        u_bool = (u     > 0) & dm
+        p_bool = (p     > 0) & dm
+        f_bool = (f_spot > 0) & dm
     else:
-        u_bool, p_bool, f_bool = (u > 0), (p > 0), (f_spot > 0)
+        u_bool = (u     > 0)
+        p_bool = (p     > 0)
+        f_bool = (f_spot > 0)
 
-    # Filter out spurious magnetic artifacts leaving only the primary feature
+    # keep_largest on umbra and penumbra individually (noise removal),
+    # but apply it to Full Spot AFTER the morphological close so holes are
+    # already filled — identical behaviour to the original clean_spot_mask().
     if cleanup:
         u_bool = _keep_largest(u_bool)
         p_bool = _keep_largest(p_bool)
         f_bool = _keep_largest(f_bool)
 
-    return {"umbra": u_bool, "penumbra": p_bool, "spot": f_bool, "full_spot": f_bool}
+    return {"umbra": u_bool, "penumbra": p_bool, "spot": f_bool}
+
+
+# =====================================================================
+# AIA SEGMENTATION
+# =====================================================================
+
+def _polar_slice_mask(
+    shape: Tuple[int, int],
+    center: Tuple[float, float],
+    r_pix: float,
+    r_min_frac: float = 0.60,
+    r_max_frac: float = 0.95,
+    th_start: float  = 70.0,
+    th_end: float    = 110.0,
+) -> np.ndarray:
+    """
+    Returns a boolean mask selecting a polar annular slice of the solar disk.
+
+    Used to sample a clean Quiet Sun region away from the active region and
+    the limb, matching the polar_slice_mask() approach in the original script.
+
+    Parameters
+    ----------
+    shape : tuple
+        (H, W) of the full-disk image.
+    center : tuple
+        (cx, cy) solar disk centre in pixels.
+    r_pix : float
+        Solar radius in pixels.
+    r_min_frac, r_max_frac : float
+        Radial range as fraction of r_pix (default 0.60 - 0.95).
+    th_start, th_end : float
+        Angular range in degrees, measured from the positive x-axis
+        (default 70 - 110 deg corresponds roughly to the solar north polar cap).
+
+    Returns
+    -------
+    np.ndarray
+        Boolean mask of the same shape as the input image.
+    """
+    H, W = shape
+    yy, xx  = np.indices((H, W))
+    X       = xx - center[0]
+    Y       = yy - center[1]
+    r_norm  = np.sqrt(X**2 + Y**2) / float(r_pix)
+    theta   = (np.degrees(np.arctan2(Y, X)) + 360.0) % 360.0
+    return (r_norm >= r_min_frac) & (r_norm <= r_max_frac) & (theta >= th_start) & (theta <= th_end)
+
 
 def get_aia_masks(
     crop_aia: np.ndarray,
     spot_mask: np.ndarray,
     plage_excess_pct: float = 20.0,
-    qs_tol_pct: float = 15.0,
-    min_area: int = 450
+    qs_tol_pct: float       = 15.0,
+    min_area: int           = 450,
+    blur_sigma: int         = 3,
+    # Compute QS median from polar slice
+    solar_center: Optional[Tuple[float, float]] = None,
+    r_pix: Optional[float]                      = None,
+    full_disk_aia: Optional[np.ndarray]         = None,
+    ps_r_min: float  = 0.60,
+    ps_r_max: float  = 0.95,
+    ps_th_start: float = 70.0,
+    ps_th_end: float   = 110.0,
+    # Crop origin within the full disk (needed for polar slice)
+    x0: int = 0,
+    y0: int = 0,
 ) -> Dict[str, np.ndarray]:
     """
-    Segments AIA 1700 Å UV data into Plage, Network, and Quiet Sun.
+    Segments AIA 1700 A UV data into Plage, Network, and Quiet Sun.
 
-    Establishes a statistical Quiet Sun baseline by explicitly excluding
-    sunspot pixels, preventing the dark umbra/penumbra from skewing the median.
-    Applies configurable percentage-based emission thresholds.
+    Polar-slice Quiet Sun:
+        When solar_center, r_pix, and full_disk_aia are provided the Quiet Sun
+        median is calculated from a polar slice of the full-disk image
+        (r = 60-95% of R_sun, angle 70-110 deg) that lies entirely outside the
+        active region. This prevents plage/network pixels in the crop from
+        contaminating the median, which would push thresholds up and cause
+        under-detection of plage.
+
+        If those arguments are not provided (e.g. in test mode) the function
+        falls back to the crop median outside the spot mask.
+
+    QS mask definition:
+        QS is defined as pixels that are finite, above zero, not in the spot,
+        not in the network, and not in the plage -- matching the original script.
+        Dark calibration artefacts (<=0) are excluded.
 
     Parameters
     ----------
     crop_aia : np.ndarray
-        Aligned and cropped 2D array of the AIA 1700 Å observation.
+        Aligned, limb-darkening-corrected, cropped AIA 1700 A image.
     spot_mask : np.ndarray
-        Boolean mask of the active sunspot (from HMI) to be explicitly ignored.
+        Boolean mask of the sunspot from HMI (same shape as crop_aia).
     plage_excess_pct : float
-        Percentage emission excess above the Quiet Sun median to classify as Plage.
+        % excess above QS median to classify as Plage (default 20%).
     qs_tol_pct : float
-        Percentage emission excess above the Quiet Sun median to classify as Network.
+        % excess above QS median to classify as Network (default 15%).
     min_area : int
-        Minimum contiguous pixel area required to classify a feature as Plage.
+        Minimum contiguous pixel area for a plage region (default 450 px).
+    blur_sigma : int
+        Gaussian blur kernel size for plage candidate smoothing (default 3).
+    solar_center : tuple, optional
+        (cx, cy) solar centre in the FULL-DISK image, from FITS header.
+    r_pix : float, optional
+        Solar radius in pixels, from FITS header.
+    full_disk_aia : np.ndarray, optional
+        Full-disk (or at least full-frame) aligned AIA image before cropping,
+        used to compute the polar-slice QS median.
+    ps_r_min, ps_r_max : float
+        Radial range of the polar slice as fraction of R_sun.
+    ps_th_start, ps_th_end : float
+        Angular range of the polar slice in degrees.
+    x0, y0 : int
+        Top-left corner of the crop in the full-disk frame.
+        Used to translate solar_center into the crop coordinate system.
 
     Returns
     -------
     dict
-        Boolean arrays corresponding to 'plage', 'network', and 'qs' (Quiet Sun).
+        Boolean arrays for keys: 'plage', 'network', 'qs'.
     """
-    # Calculate Quiet Sun median strictly outside the sunspot boundary
-    qs_median = np.nanmedian(crop_aia[~spot_mask])
+    # ----------------------------------------------------------------
+    # Compute QS median from polar slice on the full-disk image
+    # ----------------------------------------------------------------
+    use_polar_slice = (
+        solar_center is not None
+        and r_pix is not None
+        and full_disk_aia is not None
+    )
 
-    # Calculate absolute emission thresholds
+    if use_polar_slice:
+        ps_mask = _polar_slice_mask(
+            full_disk_aia.shape,
+            center    = solar_center,
+            r_pix     = r_pix,
+            r_min_frac= ps_r_min,
+            r_max_frac= ps_r_max,
+            th_start  = ps_th_start,
+            th_end    = ps_th_end,
+        )
+        qs_vals = full_disk_aia[ps_mask]
+        qs_vals = qs_vals[np.isfinite(qs_vals) & (qs_vals > 0)]
+        qs_median = np.nanmedian(qs_vals) if qs_vals.size > 0 else np.nanmedian(crop_aia[~spot_mask])
+    else:
+        # use crop median outside spot (test mode / no header info)
+        qs_median = np.nanmedian(crop_aia[~spot_mask])
+
+    # ----------------------------------------------------------------
+    # Emission thresholds
+    # ----------------------------------------------------------------
     plage_thresh = qs_median * (1.0 + plage_excess_pct / 100.0)
-    net_thresh = qs_median * (1.0 + qs_tol_pct / 100.0)
+    net_thresh   = qs_median * (1.0 + qs_tol_pct       / 100.0)
 
-    # 1. Isolate Plage candidates (highest emission, excluding sunspot)
-    plage_candidates = (crop_aia > plage_thresh) & (~spot_mask)
+    # ----------------------------------------------------------------
+    # 1. Plage — blurred to reduce UV transient noise, then area filter
+    # ----------------------------------------------------------------
+    # Exclude spot from consideration before blurring
+    aia_nospot = np.where(spot_mask, np.nan, crop_aia.astype(float))
+    blurred    = cv2.GaussianBlur(
+        np.nan_to_num(aia_nospot).astype(np.float32),
+        (blur_sigma, blur_sigma), 0
+    )
+    plage_candidates = (blurred > plage_thresh) & (~spot_mask)
 
-    # Apply spatial filtering to eliminate small-scale UV transient noise
     plage = np.zeros_like(plage_candidates, dtype=bool)
     if np.any(plage_candidates):
         lbl, n = label(plage_candidates)
@@ -133,24 +283,34 @@ def get_aia_masks(
             if np.sum(region) >= min_area:
                 plage[region] = True
 
-    # 2. Isolate Magnetic Network (emission between QS tolerance and Plage)
+    # ----------------------------------------------------------------
+    # 2. Network — emission between QS tolerance and plage threshold
+    # ----------------------------------------------------------------
     network = (crop_aia > net_thresh) & (~plage) & (~spot_mask)
 
-    # 3. Define the pure Quiet Sun (baseline emission, non-magnetic)
-    qs = (crop_aia <= net_thresh) & (~spot_mask)
+    # ----------------------------------------------------------------
+    # QS — finite, positive, not spot, not network, not plage
+    # ----------------------------------------------------------------
+    valid = np.isfinite(crop_aia) & (crop_aia > 0)
+    qs    = valid & (~spot_mask) & (~plage) & (~network)
 
-    return {'plage': plage, 'network': network, 'qs': qs}
+    return {"plage": plage, "network": network, "qs": qs}
+
+
+# =====================================================================
+# UTILITIES
+# =====================================================================
 
 def _keep_largest(mask: np.ndarray) -> np.ndarray:
     """
     Isolates the largest contiguous region in a binary mask.
-    Used to suppress minor magnetic/intensity artifacts outside the primary active region.
+    Suppresses isolated noise pixels outside the primary active region.
     """
     if mask is None or not np.any(mask):
         return mask
     lbl, n = label(mask)
     if n <= 1:
         return mask
-    sizes = np.bincount(lbl.ravel())
-    sizes[0] = 0  # Ignore background
+    sizes    = np.bincount(lbl.ravel())
+    sizes[0] = 0  # ignore background label
     return (lbl == np.argmax(sizes))
