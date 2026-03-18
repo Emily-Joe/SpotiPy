@@ -9,6 +9,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from astropy.io import fits
 
+
 def remove_limb_darkening(image, center, radius_pix, mask=None):
     """
     Removes limb darkening by calculating and subtracting the radial profile.
@@ -61,28 +62,37 @@ def remove_limb_darkening(image, center, radius_pix, mask=None):
 
     # Normalize profile (optional, but good for stability)
     if radial_prof.size > 20:
-        med = np.median(radial_prof[:20]) # Center brightness
+        med = np.median(radial_prof[:20])  # Center brightness
         if med > 0:
             radial_prof = radial_prof / med
 
     # 2. Create the 2D Correction Plane
-    # Interpolate the 1D profile back into a 2D image
+    # Interpolate the 1D profile back into a 2D image.
+    # fill_value=1.0 ensures pixels outside the solar disk receive no correction
+    # (dividing by 1.0 = identity). Previously, fill_value='extrapolate' caused
+    # the profile to be extrapolated beyond the limb, producing near-zero values
+    # that led to a bright ring artifact at the disk edge.
     interp_func = interp1d(
         np.arange(len(radial_prof)),
         radial_prof,
         bounds_error=False,
-        fill_value='extrapolate'
+        fill_value=1.0          #was 'extrapolate' → caused bright ring artifact
     )
 
     background_plane = interp_func(r.ravel()).reshape(image.shape)
 
     # 3. Correct the Image
-    # Divide the original image by the background plane
-    # Handle edges/nans gracefully
+    # Only divide pixels that lie inside the solar disk. Applying the correction
+    # to off-disk pixels amplified edge noise and contributed to the ring artifact.
+    # Outside the disk the image is left untouched.
+    corrected = image.copy()
     with np.errstate(divide='ignore', invalid='ignore'):
-        corrected = image / np.where((background_plane > 0), background_plane, 1.0)
+        corrected[disk] = image[disk] / np.where(
+            background_plane[disk] > 0, background_plane[disk], 1.0
+        )
 
     return corrected
+
 
 def get_header_geometry(header):
     """Helper to extract center and radius from a FITS header."""
