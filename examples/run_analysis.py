@@ -263,7 +263,9 @@ def main():
     # --- 1. Directories ---
     base_dir = f"data_NOAA_{noaa}"
     ROOT     = f"results_NOAA_{noaa}"
-    hmi_keys = ["Ic", "M", "V", "Ld", "Lw"]
+    #hmi_keys = ["Ic", "M", "V", "Ld", "Lw"]
+    hmi_keys = ["Ic"]
+
 
     series_to_download = {
         "HMI_NoLD": ("hmi.Ic_noLimbDark_720s", None),
@@ -449,6 +451,7 @@ def main():
             umbra_m = hmi_masks["umbra"]
             penum_m = hmi_masks["penumbra"]
             full_m  = hmi_masks["spot"]
+            all_dark = hmi_masks['all_dark']
 
             # Save HMI FITS + overlay PNG
             fits.writeto(os.path.join(dirs["mask_hmi"], f"{base_name}_spotmask.fits"),
@@ -460,7 +463,9 @@ def main():
 
             # AIA segmentation
             aia_masks = get_aia_masks(
-                crop_aia, spot_mask=full_m,
+                crop_aia,
+                spot_mask=full_m,
+                    all_dark_mask=all_dark,
                 plage_excess_pct = float(p.get("PLAGE_EXCESS_PCT", 20.0)),
                 qs_tol_pct       = float(p.get("QUIET_SUN_TOL_PCT", 15.0)),
                 min_area         = int(p.get("MIN_PLAGE_AREA", 450)),
