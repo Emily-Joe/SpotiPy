@@ -247,12 +247,13 @@ aia_masks = get_aia_masks(
 HMI continuum intensity. Center: AIA 1700 \AA. Right: segmentation map showing
 quiet Sun (gray), network (blue), plage (gold), and sunspot (red). Excluded
 regions such as pores and the limb are shown in
-black.\label{fig:fulldisk}](fig3_segmentation_20240522_181700.pdf){ width=100% }
+black.\label{fig:fulldisk}](fig3_full_disc_segmentation.pdf){ width=100% }
 
-![Sunspot segmentation of NOAA 12738 at disk center passage. (a) HMI continuum
-crop. (b) HMI sunspot segmentation with umbra (red) and penumbra (orange).
-(c) AIA 1700 \AA crop. (d) Combined segmentation map showing all region
-types.\label{fig:spotcrop}](fig4_spot_segmentation.pdf){ width=100% }
+![Sunspot segmentation of NOAA 12738 at disk center passage. Left: HMI continuum crop. 
+Center: AIA 1700 Å crop. Right: Combined segmentation map showing umbra (red), penumbra 
+(orange), plage (gold), network (blue), and quiet Sun (gray).Small, isolated dark pores 
+excluded (black) to ensure the analysis remains focused on the primary active region.
+\label{fig:spotcrop}](fig4_spot_segmentation.pdf){ width=100% }
 
 ## 5. Tracking
 
