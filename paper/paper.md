@@ -312,13 +312,12 @@ FITS header. This deprojection allows rotation rates to be expressed in the Carr
 frame [@Carrington1863], ensuring comparability with previous studies. The transformation follows
 the method described by Balthasar [@Balthasar1979]. As illustrated in \autoref{fig:rotation_rate},
 neglecting this conversion leads to systematically biased rotation rates due to projection effects 
-on the spherical solar surface, particularly near the limb. This rotation rate function is 
+on the spherical solar surface, particularly near the limb.
 
 ![Rotation rate of a single feature (sunspot NOAA 12738) over the observation time of the feature
 on the solar disk. The left panel shows the calculated rotation rate without correcting for
 projection effects, the right panel shows the deprojected rotation rate in the Carrington rotation
-frame with the two available methods (central moment or ellipse fitting). \label{fig:rotation_rate}]
-(fig7_rotation_plot_comparison.pdf){ width=100% }
+frame with the two available methods (central moment or ellipse fitting).\label{fig:rotation_rate}](fig7_rotation_plot_comparison.pdf){ width=100% }
 
 
 # Acknowledgements
