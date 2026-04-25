@@ -8,6 +8,7 @@ in HMI continuum images, and a polar-slice Quiet Sun median to find
 plage and network in AIA 1700A.
 
 Changes applied vs. Original version:
+
 1. AIA QS reference uses a polar slice at disk centre (r=60-95%, angle
    70-110 deg) rather than the full crop median, preventing plage/network
    contamination of the threshold.
@@ -20,6 +21,7 @@ Changes applied vs. Original version:
    includes small pores discarded by _keep_largest. Passed into
    get_aia_masks() so pores are never misclassified as Quiet Sun or
    Network in the AIA step -- matching dirty_mask logic in original script.
+
 """
 
 import numpy as np
@@ -64,9 +66,7 @@ def get_masks(
     dict
         Boolean arrays for keys: 'umbra', 'penumbra', 'spot', 'all_dark'.
         'spot'     - largest contiguous active region (umbra + penumbra).
-        'all_dark' - raw dark mask BEFORE _keep_largest, i.e. includes all
-                     small pores. Pass this to get_aia_masks() so pores are
-                     excluded from Quiet Sun and Network classification.
+        'all_dark' - raw dark mask BEFORE _keep_largest, i.e. includes all small pores. Pass this to get_aia_masks() so pores are excluded from Quiet Sun and Network classification.
     """
     # Normalize to 8-bit (0-255) for OpenCV compatibility
     vmin, vmax = 0.0, 2.0
@@ -251,6 +251,7 @@ def get_aia_masks(
     -------
     dict
         Boolean arrays for keys: 'plage', 'network', 'qs'.
+
     """
     # ----------------------------------------------------------------
     # Build combined dark exclusion mask (main spot + pores)
