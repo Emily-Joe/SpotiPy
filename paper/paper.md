@@ -163,9 +163,9 @@ grid.\label{fig:alignment}](fig2_alignment.pdf){ width=100% }
 
 This function implements radial-profile subtraction to remove the center-to-limb
 intensity gradient, which is essential for reliable intensity thresholding across
-the full solar disk. Limb darkening is a geometrical effect that allows the observer
-to look deeper into the atmosphere at the center of the solar disc than at the limb, 
-where the line of sight passes through the atmosphere at an angle. The decreasing 
+the full solar disk. Limb darkening is a radiative transfer effect induced by viewing geometry
+that allows the observer to look deeper into the atmosphere at the center of the solar disc 
+than at the limb, where the line of sight passes through the atmosphere at an angle. The decreasing 
 temperature with height in the solar photosphere results in a darker limb and a 
 brighter center [@Foukal2004; @Gray2005]. Removing this gradient is therefore necessary
 before applying uniform intensity thresholds across the disk.
@@ -199,15 +199,16 @@ are unavailable.\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100%
 `SpotiPy` uses intensity thresholding combined with morphological operations to
 generate binary masks for umbra, penumbra, and extended spot regions from HMI
 continuum intensity, and for plage, network, and quiet Sun regions from AIA
-1700 Å. The thresholding approach identifies pixels within defined intensity
-ranges normalized to the quiet Sun level. To optimize for OpenCV morphological 
-operations, the HMI continuum arrays are mapped to an 8-bit scale `(0-255)` where 
-the quiet Sun median corresponds to a pixel value of approximately 128. Umbral pixels
-are identified using an 8-bit intensity range of 10 to 55 (corresponding to ~8% to 43% 
-of the quiet Sun level), and penumbral pixels use a range of 75 to 120 (corresponding to 
-~59% to 94% of the quiet Sun level). In contrast, plage regions in AIA are identified directly 
-from the normalized data as pixels exceeding the quiet Sun level by more than 20% (`plage_excess_pct=20.0`) 
-over an area of at least 600 pixels.
+1700 Å. The segmentation is performed using intensity thresholding combined with size-based 
+classification. Thresholds are defined relative to the normalized quiet-Sun intensity, 
+with lower and upper bounds assigned to each class (quiet Sun, umbra, penumbra, network, 
+and plage). These thresholds were empirically calibrated to values of x, y, z, a, b, and c 
+for the respective feature types, and are broadly consistent with those reported in previous 
+studies [@Chapman1989; @gyori1998; @preminger2001; @solanki2003; @kiess2014; @hoeksema2014]. 
+
+To distinguish between network and plage, contiguous regions exceeding the network intensity 
+threshold are further classified based on their area: structures larger than $XX$~[unit] are
+identified as plage, while smaller structures are classified as network.
 
 
 The segmentation masks can be applied across all five HMI observables
@@ -327,4 +328,4 @@ by NASA. HMI and AIA data were accessed via the JSOC data export service.
 AP was supported by grant PI 2102/1-1 from the Deutsche Forschungsgemeinschaft (DFG). 
 DeepL Write was used for assistance with grammar and language polishing.
 
-
+# References
