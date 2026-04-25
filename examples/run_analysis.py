@@ -73,14 +73,17 @@ def read_fits(path):
         return None, None
 
 def find_closest_file(target_time, file_list):
-    best_path, best_dt = None, 9e99
+    best_path, best_dt = None, float('inf')
     for path in file_list:
-        _, hdr = read_fits(path)
-        if hdr is None or "DATE-OBS" not in hdr:
+        try:
+            try: date_obs = fits.getval(path, "DATE-OBS", ext=1)
+            except IndexError: date_obs = fits.getval(path, "DATE-OBS", ext=0)
+
+            dt = abs((Time(date_obs) - target_time).to_value("s"))
+            if dt < best_dt:
+                best_dt, best_path = dt, path
+        except Exception:
             continue
-        dt = abs((Time(hdr["DATE-OBS"]) - target_time).to_value("s"))
-        if dt < best_dt:
-            best_dt, best_path = dt, path
     return best_path
 
 def build_mu_map(shape, header, x0, y0):
@@ -337,19 +340,6 @@ def main():
     tracks = track_spots(nold_files, data_dirs["HMI_NoLD"], x_start, y_start)
     print(f"  Tracks computed for {len(tracks)} timesteps.")
 
-    # --- Strip visualization ---
-    print("Generating time-summed strip...")
-    strip(
-        series           = nold_files,
-        directory        = data_dirs["HMI_NoLD"],
-        tracks           = tracks,
-        strip_height_arcsec = 400,
-        frame_size       = FRAME_SIZE,
-        overlay          = True,
-        animate          = False,
-        save_path        = ROOT,
-    )
-
     # --- 5. Skip-if-exists check ---
     skip_fits = False
     example = os.path.join(hmi_res_dirs["Ic"], "Umbra_raw.txt")
@@ -364,7 +354,7 @@ def main():
     DATA_HMI = {key: {cat: [[], []] for cat in hmi_cats} for key in hmi_keys}
     DATA_AIA = {key: {cat: [[], []] for cat in aia_cats} for key in hmi_keys}
 
-    # Containers for .npz output
+    # for .npz output
     all_hmi_context    = []
     all_hmi_seg        = []
     all_aia_context    = []
@@ -419,9 +409,23 @@ def main():
             H, W = d_nold.shape
             rx0 = int(np.clip(cx - half, 0, W - FRAME_SIZE))
             ry0 = int(np.clip(cy - half, 0, H - FRAME_SIZE))
-            cx, cy = refine_centering(d_nold[ry0:ry0+FRAME_SIZE, rx0:rx0+FRAME_SIZE], rx0, ry0, FRAME_SIZE)
-            x0 = int(np.clip(cx, 0, W - FRAME_SIZE))
-            y0 = int(np.clip(cy, 0, H - FRAME_SIZE))
+
+            ideal_x0, ideal_y0, accepted = refine_centering(
+                d_nold[ry0:ry0+FRAME_SIZE, rx0:rx0+FRAME_SIZE],
+                rx0, ry0, FRAME_SIZE, max_shift=None
+            )
+
+            if accepted:
+                new_x_arc = (solar_cx - (ideal_x0 + half)) * hdr_nold["CDELT1"]
+                new_y_arc = (solar_cy - (ideal_y0 + half)) * hdr_nold["CDELT2"]
+                shift_x, shift_y = new_x_arc - tracks[i, 0], new_y_arc - tracks[i, 1]
+                if i + 1 < len(tracks):
+                    tracks[i+1:, 0] += shift_x
+                    tracks[i+1:, 1] += shift_y
+                tracks[i, 0], tracks[i, 1] = new_x_arc, new_y_arc
+
+            x0 = int(np.clip(ideal_x0 if accepted else rx0, 0, W - FRAME_SIZE))
+            y0 = int(np.clip(ideal_y0 if accepted else ry0, 0, H - FRAME_SIZE))
 
             # Arcsec extent for overlay axes
             _dx = hdr_nold["CDELT1"]
@@ -439,7 +443,7 @@ def main():
 
             # mu map
             mu_map  = np.rot90(build_mu_map((FRAME_SIZE, FRAME_SIZE), hdr_nold, x0, y0), 2)
-            ondisk_m = mu_map > 0
+            ondisk_m = mu_map > 0.05
 
             # HMI segmentation
             hmi_masks = get_masks(
@@ -491,8 +495,8 @@ def main():
                                               os.path.basename(best_aia).replace(".fits", "_overlay.png")),
                                  crop_extent=crop_extent, ondisk_m=ondisk_m)
 
-            # Collect frames for .npz
-            tx, ty, lon, lat = get_heliographic_coords(d_nold, hdr_nold, x0, y0, FRAME_SIZE)
+            # Collect frames for .npz using ideal coordinates
+            tx, ty, lon, lat = get_heliographic_coords(d_nold, hdr_nold, ideal_x0 if accepted else rx0, ideal_y0 if accepted else ry0, FRAME_SIZE)
             all_hmi_context.append(crop_norm.astype(np.float32))
             all_hmi_seg.append(seg_map)  # reuse combined HMI+AIA seg
             all_aia_context.append(crop_aia.astype(np.float32))
@@ -556,6 +560,20 @@ def main():
         for obs_key in hmi_keys:
             load_results(DATA_HMI[obs_key], hmi_res_dirs[obs_key], hmi_cats)
             load_results(DATA_AIA[obs_key], aia_res_dirs[obs_key], aia_cats)
+
+    # --- Strip visualization ---
+    # Moved here so it reflects the corrected active tracking path
+    print("Generating time-summed strip...")
+    strip(
+        series           = nold_files,
+        directory        = data_dirs["HMI_NoLD"],
+        tracks           = tracks,
+        strip_height_arcsec = 400,
+        frame_size       = FRAME_SIZE,
+        overlay          = True,
+        animate          = False,
+        save_path        = ROOT,
+    )
 
     # --- 9. Generate CLV plots ---
     print("\nGenerating CLV plots...")
