@@ -19,7 +19,7 @@ extensions = [
     'myst_parser',              # write docs in Markdown
 ]
 
-# AutoAPI settings - point to your SpotiPy source folder
+# -- AutoAPI settings - point to SpotiPy source folder
 autoapi_dirs = ['../../src']
 autoapi_type = 'python'
 autoapi_add_toctree_entry = True
