@@ -14,6 +14,7 @@ authors:
     orcid: 0009-0006-3049-4875
     affiliation: 1, 2
   - name: Alexander G.M. Pietrow
+    corresponding: true
     orcid: 0000-0002-0484-7634
     affiliation: 1
   - name: Carsten Denker
@@ -55,6 +56,8 @@ enables the identification and tracking of arbitrary fields of view over time.
 While initial applications have focused on sunspot studies, the implemented
 procedures are equally valid for other types of solar structures, such as plage,
 network, and filaments.
+
+*Corresponding author: Alexander G.M. Pietrow ([apietrow@aip.de](mailto:apietrow@aip.de))*
 
 # Statement of Need
 
@@ -190,12 +193,12 @@ aia_corrected = remove_limb_darkening(aia_raw, center=(cx, cy), radius_pix=r_pix
 ![AIA 1700 Å before (left) and after (right) limb darkening
 correction.\label{fig:limbdark}](fig1_limb_darkening_aia.pdf){ width=100% }
 
-![Radial intensity profile of the solar disk (left) and its derivative (right).
-The dashed vertical line marks the limb radius extracted from the FITS header 
-parameters (1567 pixels). The intensity profile shows the characteristic center-to-limb
-variation, which is subtracted during correction. The derivative profile illustrates 
-the sharp intensity drop at the limb boundary, confirming the accuracy
-of the header geometry..\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100% }
+![Radial intensity profile of the solar disk (left) and its derivative (right). 
+The left panel displays the raw intensity profile overlaid with a 5th-order polynomial 
+center-to-limb variation (CLV) fit calculated within the solar disk. The dashed vertical 
+line marks the limb radius extracted from the FITS header parameters (1564 pixels). 
+The derivative profile on the right illustrates the sharp intensity drop at the limb 
+boundary, confirming the accuracy of the header geometry.\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100% }
 
 ## 4. Segmentation {#sec:segmentation}
 
@@ -210,7 +213,7 @@ for the respective feature types, and are broadly consistent with those reported
 studies [@Chapman1989; @gyori1998; @preminger2001; @solanki2003; @kiess2014; @hoeksema2014]. 
 
 To distinguish between network and plage, contiguous regions exceeding the network intensity 
-threshold are further classified based on their area: structures larger than $XX$~[unit] are
+threshold are further classified based on their area: structures larger than $450$ pixels are
 identified as plage, while smaller structures are classified as network.
 
 
