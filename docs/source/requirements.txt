@@ -1,0 +1,21 @@
+# Core Scientific Stack
+#numpy==1.26.4
+#numpy
+#astropy==7.1.1
+#astropy==6.1.7
+#sunpy==7.0.2
+#matplotlib==3.10.1
+#opencv-python==4.12.0.88
+
+numpy
+astropy
+sunpy
+matplotlib
+opencv-python
+
+# Documentation
+#Sphinx==8.2.3
+Sphinx
+furo==2025.12.19
+sphinx-autoapi==3.8.0
+myst-parser

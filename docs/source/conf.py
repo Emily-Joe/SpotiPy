@@ -19,7 +19,16 @@ extensions = [
     'myst_parser',              # write docs in Markdown
 ]
 
-# AutoAPI settings - point to your SpotiPy source folder
+# -- mock impots
+autodoc_mock_imports = [
+    "sunpy",
+    "cv2",
+    "astropy",
+    "matplotlib",
+    "numpy",
+]
+
+# -- AutoAPI settings - point to SpotiPy source folder
 autoapi_dirs = ['../../src']
 autoapi_type = 'python'
 autoapi_add_toctree_entry = True
