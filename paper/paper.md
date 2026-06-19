@@ -33,18 +33,18 @@ bibliography: paper.bib
 
 Solar activity manifests itself in many different ways, from the near-omnipresent
 network to the more confined active regions, which appear as groups of faculae,
-spots, and pores in the photosphere, and as plage, filaments, and prominences in
+spots, and pores in the photosphere, and as filaments and prominences in
 the chromosphere. Our ever-improving physical understanding and astronomical
-instrumentation have made these features the subject of study for several
+instrumentation has made these features the subject of study for several
 centuries [@solanki2003; @Cretignier2024; @palumbo2024].
 
-In recent years, more focus has been put on the consistent tracking and
+In recent years, more focus has been placed on the consistent tracking and
 observations of active regions with space-based facilities such as the Solar
-Dynamics Observatory [SDO, @pesnell2012], The Hinode (Solar-B) Mission [@kosugi2007], the Chinese H$\alpha$ Solar
+Dynamics Observatory [SDO, @pesnell2012], the Hinode (Solar-B) Mission [@kosugi2007], the Chinese H$\alpha$ Solar
 Explorer [CHASE, @li2022], and the Interface Region Imaging Spectrograph
 [IRIS, @depontieu2014], but also in high resolution from the ground with
-facilities such as the Swedish Solar Telescope [SST, @scharmer2003] and
-GREGOR Solar Telescope in Tenerife [@schmidt2012], resulting in strong 
+facilities such as the Swedish Solar Telescope [SST, @scharmer2003] and the
+GREGOR solar telescope [@schmidt2012], resulting in strong 
   progression of our understanding of these features.
 
 `SpotiPy` is a Python package developed for feature identification and tracking
@@ -54,7 +54,7 @@ primarily designed for use with data from the Helioseismic and Magnetic Imager
 aboard SDO, although the methods are not instrument-specific. The pipeline
 enables the identification and tracking of arbitrary fields of view over time.
 While initial applications have focused on sunspot studies, the implemented
-procedures are equally valid for other types of solar structures, such as plage,
+procedures are equally valid for other types of solar features such as plage,
 network, and filaments.
 
 *Corresponding author: Alexander G.M. Pietrow ([apietrow@aip.de](mailto:apietrow@aip.de))*
@@ -67,9 +67,9 @@ they do not aim to offer an integrated pipeline for the tracking of solar active
 regions. In particular, tasks such as time-series download, cross-instrument
 alignment between observations, and consistent image preprocessing are typically
 handled through custom scripts by individual researchers, which can be difficult
-to reproduce and maintain across projects. While foundational libraries like `astropy`
-[@astropy2022] handle the underlying coordinate transformations, and instrument-specific 
-packages like `aiapy` [@aiapy2020] provide excellent calibration routines for SDO/AIA data, 
+to reproduce and maintain across projects. While foundational libraries such as `astropy`
+[@astropy2022] handle the underlying coordinate transformations and instrument-specific 
+packages such as `aiapy` [@aiapy2020] provide excellent calibration routines for SDO/AIA data, 
 they lack the specific, multi-instrument feature-tracking integration that `SpotiPy` provides
 
 `SpotiPy` addresses this practical gap by providing a modular framework that
@@ -82,12 +82,12 @@ reuse and sustained development.
 
 # Functionality
 
-`SpotiPy` is organized into five independent modules — (1) Downloading,
-(2) Aligning, (3) Limb Darkening Correction, (4) Segmentation, and (5) Tracking —
+`SpotiPy` is organized into five independent modules — (1) Data download,
+(2) Alignment, (3) Limb Darkening Correction, (4) Segmentation, and (5) Tracking —
 that can be used together as a complete pipeline or individually within existing
 workflows.
 
-## 1. Downloading
+## 1. Data downloading
 
 `SpotiPy` provides a wrapper around `Fido` that handles
 JSOC email authentication and batch retrieval of HMI and AIA time series.
@@ -101,13 +101,13 @@ Table 1: HMI and AIA full-disk data products and passbands accessible via the do
 | :--- | :--- | :--- |
 | HMI | Continuum Intensity | `hmi.Ic_45s`, `hmi.Ic_720s` |
 | HMI | Continuum Intensity (Flattened) | `hmi.Ic_nolimbDark_720s`, `hmi.Ic_nolimbDark_720s_nrt` |
-| HMI | Linewidth | `hmi.Lw_45s`, `hmi.Lw_720s` |
-| HMI | Linedepth | `hmi.Ld_45s`, `hmi.Ld_720s` |
+| HMI | Line width | `hmi.Lw_45s`, `hmi.Lw_720s` |
+| HMI | Line depth | `hmi.Ld_45s`, `hmi.Ld_720s` |
 | HMI | LOS Magnetograms | `hmi.M_45s`, `hmi.M_720s` |
 | HMI | Dopplergrams | `hmi.V_45s`, `hmi.V_720s` |
-| AIA | Visible (4500 Å) | `aia.lev1_vis_1h` |
-| AIA | Ultraviolet (1600, 1700 Å) | `aia.lev1_uv_24s` |
-| AIA | Extreme UV (94, 131, 193, 211, 304, 335 Å) | `aia.lev1_euv_12s` |
+| AIA | Continuum Intensity (4500 Å) | `aia.lev1_vis_1h` |
+| AIA | Ultraviolet (1600 Å, 1700 Å) | `aia.lev1_uv_24s` |
+| AIA | Extreme UV (94 Å, 131 Å, 193 Å, 211 Å, 304 Å, 335 Å) | `aia.lev1_euv_12s` |
 
 
 To retrieve a time series, users must configure the following core parameters:
@@ -146,14 +146,14 @@ aia_files = download_series(
 )
 ```
 
-## 2. Aligning
+## 2. Data Alignment
 
 `SpotiPy` automates the co-alignment of multi-instrument images using World
 Coordinate Systems (WCS) and fast interpolation via the `reproject` package 
-[@reproject]. The alignment module automatically handles the inconsistent
-FITS file structures (e.g., data stored in primary versus secondary HDUs) across 
+[@reproject]. The alignment module automatically handles the different
+FITS file structures (e.g., data stored in primary versus secondary header data units (HDUs)) across 
 different SDO data products.This ensures that HMI and AIA observations share a common
-pixel grid, as shown in \autoref{fig:alignment}.
+pixel scale of 0.6 arcseconds per pixel, as shown in \autoref{fig:alignment}.
 
 ```python
 # Reproject AIA onto the HMI pixel grid and orientation
@@ -161,14 +161,14 @@ from spotipy.aligning import align_images
 align_images(aia_path, hmi_reference_path, output_path)
 ```
 
-![Reprojection of AIA 1700 Å onto the HMI pixel grid. Left: original AIA grid.
+![Reprojection of AIA 1700 Å intensity onto the HMI pixel grid. Left: original AIA grid.
 Center: HMI reference. Right: AIA reprojected to HMI
 grid.\label{fig:alignment}](fig2_alignment.pdf){ width=100% }
 
 ## 3. Limb Darkening Correction
 
 This function implements radial-profile subtraction to remove the center-to-limb
-intensity gradient for HMI continuum and AIA 1600 Å and 1700 Å observations, 
+intensity profile for HMI continuum and AIA 1600 Å and 1700 Å observations, 
 which is essential for reliable intensity thresholding across
 the full solar disk. Limb darkening is a radiative transfer effect induced by viewing geometry
 that allows the observer to look deeper into the atmosphere at the center of the solar disc 
@@ -190,15 +190,15 @@ from spotipy.limbdarkening_removal import remove_limb_darkening, get_header_geom
 aia_corrected = remove_limb_darkening(aia_raw, center=(cx, cy), radius_pix=r_pix)
 ```
 
-![AIA 1700 Å before (left) and after (right) limb darkening
+![AIA 1700 Å intensity before (left) and after (right) limb darkening
 correction.\label{fig:limbdark}](fig1_limb_darkening_aia.pdf){ width=100% }
 
 ![Radial intensity profile of the solar disk (left) and its derivative (right). 
 The left panel displays the raw intensity profile overlaid with a 5th-order polynomial 
-center-to-limb variation (CLV) fit calculated within the solar disk. The dashed vertical 
+fit describing the center-to-limb variation (CLV). The dashed vertical 
 line marks the limb radius extracted from the FITS header parameters (1564 pixels). 
 The derivative profile on the right illustrates the sharp intensity drop at the limb 
-boundary, confirming the accuracy of the header geometry.\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100% }
+boundary.\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100% }
 
 ## 4. Segmentation {#sec:segmentation}
 
@@ -214,14 +214,12 @@ studies [@Chapman1989; @gyori1998; @preminger2001; @solanki2003; @kiess2014; @ho
 
 To distinguish between network and plage, contiguous regions exceeding the network intensity 
 threshold are further classified based on their area: structures larger than $450$ pixels are
-identified as plage, while smaller structures are classified as network.
-
+identified as plage, while smaller structures are classified as network. We note that this introduces a center-to-limb inconsistency, as a fixed pixel threshold corresponds to a larger physical area at smaller $\mu$. However, the chosen value has been found to provide a robust performance across the disk.
 
 The segmentation masks can be applied across all five HMI observables
 simultaneously — continuum intensity (`hmi.Ic_720s`), Doppler velocity
 (`hmi.V_720s`), magnetic flux density (`hmi.M_720s`), line depth (`hmi.Ld_720s`),
-and line width (`hmi.Lw_720s`) — enabling studies of center-to-limb variation
-(CLV) within individual solar features.
+and line width (`hmi.Lw_720s`) — enabling studies of the CLV within individual solar features.
 
 \autoref{fig:fulldisk} shows the full-disk segmentation map, while
 \autoref{fig:spotcrop} shows a ROI of an individual sunspot with
@@ -251,13 +249,13 @@ aia_masks = get_aia_masks(
 )
 ```
 
-![Full-disk segmentation map derived from HMI continuum and AIA 1700 Å. Left:
+![Full-disk segmentation map derived from HMI continuum intensity and AIA 1700 Å intensity. Left:
 HMI continuum intensity. Center: AIA 1700 Å. Right: segmentation map showing
 quiet Sun (gray), network (blue), plage (gold), and sunspot (red). Excluded
-regions such as pores and the limb are shown in
+regions such as pores and regions beyond the limb are shown in
 black.\label{fig:fulldisk}](fig3_full_disc_segmentation.pdf){ width=100% }
 
-![Sunspot segmentation of NOAA 12738 at central meridian passage. Left: HMI continuum ROI. 
+![Sunspot segmentation of active region NOAA 12738 at central meridian passage. Left: HMI continuum ROI. 
 Center: AIA 1700 Å intensity ROI. Right: Combined segmentation map showing umbra (red), penumbra 
 (orange), plage (gold), network (blue), and quiet Sun (gray). Small, isolated dark pores 
 excluded (black) to ensure the analysis remains focused on the primary active region.
@@ -266,7 +264,7 @@ excluded (black) to ensure the analysis remains focused on the primary active re
 ## 5. Tracking
 
 `SpotiPy` computes the expected pixel position of a solar feature over time 
-using the differential rotation model derived by [@loessnitz2025]. This enables
+using the differential rotation model derived by @loessnitz2025. This enables
 consistent cropping of a tracked region across a multi-day time series. The 
 tracking module first applies this physical model to predict where a feature at 
 a given heliographic position will appear in subsequent frames. To account for 
@@ -274,8 +272,7 @@ local proper motions or small model deviations, the pipeline utilizes the
 `refine_centering` function to "lock on" to the darkest pixels of the sunspot umbra.
 This ensures the feature remains centered within the extraction window throughout its transit.
 
-The resulting coordinates are returned as NumPy arrays containing the refined heliographic and 
-arcsecond positions for each time step. These data are used to generate the extraction crops and 
+The resulting coordinates are returned as NumPy arrays containing the refined coordinates for each time step. These data are used to generate the extraction crops and 
 segmentation maps shown in \autoref{fig:strip}, which displays a time-summed strip of active region NOAA 12738 as 
 it travels accross the solar disk. By calculating these tracks dynamically from the FITS headers, 
 the pipeline ensures reproducibility without relying on intermediate external data files.
@@ -303,26 +300,21 @@ strip_img, _ = strip(
     animate=False
 )
 ```
-![Time-summed strip of NOAA 12738 travelling accross the solar disk, with tracked
-bounding boxes overlaid at each time step. The color gradient from purple to
-yellow indicates the progression of
+![Time-summed strip of active region NOAA 12738 travelling accross the solar disk, with tracked
+bounding boxes overlaid at each time step. The color of the bounding boxes, from purple to
+yellow, indicates the progression of
 time.\label{fig:strip}](time_summed_strip.pdf){ width=100% }
 
 
-The Tracking Module additionally enables the determination of feature rotation rates. Using
-the segmentation described in [see Segmentation](#sec:segmentation), feature masks (e.g. sunspots) 
-are identified at each timestep, from which the feature’s center coordinates are derived—either 
-via image moments or, for approximately circular features, by fitting a minimal-area ellipse.
+The Tracking Module additionally enables the determination of feature rotation rates. Using the masks produced by the [Segmentation](#sec:segmentation) module, features such as sunspots are identified at each timestep. Their centers are then derived either from image moments
+or, for approximately circular features, by fitting a minimal-area ellipse.
 These positions are tracked over time and transformed into heliographic coordinates [@Thompson2006]
 using observational parameters such as the solar radius, tilt, and distance obtained from the 
 FITS header. This deprojection allows rotation rates to be expressed in the Carrington reference
 frame [@Carrington1863], ensuring comparability with previous studies. The transformation follows
-the method described by Balthasar [@Balthasar1979]. As illustrated in \autoref{fig:rotation_rate},
-neglecting this conversion leads to systematically biased rotation rates due to projection effects 
-on the spherical solar surface, particularly near the limb.
+the method described by Balthasar [@Balthasar1979] (see \autoref{fig:rotation_rate}).
 
-![Rotation rate of a single feature (sunspot NOAA 12738) over the observation time of the feature
-on the solar disk. The left panel shows the calculated rotation rate without correcting for
+![Rotation rate of a single feature (sunspot active region in NOAA 12738) during its disk passage. The left panel shows the calculated rotation rate without correcting for
 projection effects, the right panel shows the deprojected rotation rate in the Carrington rotation
 frame with the two available methods (central moment or ellipse fitting).\label{fig:rotation_rate}](fig7_rotation_plot_comparison.pdf){ width=100% }
 
@@ -332,6 +324,6 @@ frame with the two available methods (central moment or ellipse fitting).\label{
 We acknowledge the use of data from the Solar Dynamics Observatory, provided
 by NASA. HMI and AIA data were accessed via the JSOC data export service. 
 AP was supported by grant PI 2102/1-1 from the Deutsche Forschungsgemeinschaft (DFG). 
-DeepL Write was used for assistance with grammar and language polishing.
+DeepL Write was used for assistance with proofreading and copy-editing.
 
 # References
