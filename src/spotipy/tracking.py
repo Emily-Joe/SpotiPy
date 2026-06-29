@@ -6,25 +6,37 @@ using differential rotation models.
 """
 import os
 import numpy as np
-import numpy.ma as ma
 from astropy.time import Time
 import astropy.io.fits as f
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-from sunpy.coordinates import RotatedSunFrame
-import sunpy.map
+from sunpy.coordinates import RotatedSunFrame, Helioprojective
 from scipy.ndimage import label, center_of_mass
+
 import cv2
+import numpy as np
+import numpy.ma as ma
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+import astropy.io.fits as f
+from astropy.time import Time, TimeDelta
+import astropy.units as u
+import datetime
+from sunpy.net import Fido, attrs as a
+import os
+import astropy.units as u
+from astropy.coordinates import SkyCoord
+import sunpy.map
+from sunpy.coordinates import RotatedSunFrame
+from scipy.optimize import curve_fit
+from PIL import Image
 
 
 def get_time_steps(file_array, directory):
     """
     Calculate time differences between consecutive FITS files.
-    The function reads the observation time ('DATE-OBS') from each FITS file and computes the time difference to the previous file. The first entry is set to 0 since there is no previous file.
+    The function reads the observation time ('DATE-OBS') from each FITS file and computes the time difference to the previous file. The first entry    is set to 0 since there is no previous file.
 
     Parameters
     ----------
@@ -56,7 +68,7 @@ def get_time_steps(file_array, directory):
 
     print('Done!')
 
-    return time_steps
+    return time_steps ;
 
 
 def calculate_tracks(file_array, directory, x0, y0, time_steps):
@@ -86,9 +98,7 @@ def calculate_tracks(file_array, directory, x0, y0, time_steps):
 
     print('Calculating frame locations...')
     ##############################################################################
-    # First, load an observation and define a coordinate in its coordinate
-    # frame (here, helioprojective Cartesian).  The appropriate rate of rotation
-    # is determined from the heliographic latitude of the coordinate.
+    # First, load an observation and define a coordinate in its coordinate frame (here, helioprojective Cartesian).  The appropriate rate of rotation is determined from the heliographic latitude of the coordinate.
 
     #make sunpy Map from the information of the first FITS file of the series
     name  = file_array[0]
@@ -102,17 +112,12 @@ def calculate_tracks(file_array, directory, x0, y0, time_steps):
     start_point = SkyCoord(x0*u.arcsec, y0*u.arcsec, frame=aiamap.coordinate_frame)
 
     ##############################################################################
-    # We can differentially rotate this coordinate by using
-    # `~sunpy.coordinates.metaframes.RotatedSunFrame` with an array of observation
-    # times
+    # We can differentially rotate this coordinate by using `~sunpy.coordinates.metaframes.RotatedSunFrame` with an array of observation times
 
     diffrot_point = SkyCoord(RotatedSunFrame(base=start_point, duration=np.cumsum(time_steps)))
 
     ##############################################################################
-    # To see what this coordinate looks like in "real" helioprojective
-    # Cartesian coordinates, we can transform it back to the original frame.
-    # Since these coordinates are represented in the original frame, they will not
-    # account for the changing position of the observer over this same time range.
+    # To see what this coordinate looks like in "real" helioprojective Cartesian coordinates, we can transform it back to the original frame. Since these coordinates are represented in the original frame, they will not account for the changing position of the observer over this same time range.
 
     transformed = diffrot_point.transform_to(aiamap.coordinate_frame)
 
@@ -126,7 +131,7 @@ def calculate_tracks(file_array, directory, x0, y0, time_steps):
     return tracks
 
 
-def track_region(image, hdr, tracks, frame_size, i):
+def track_region(image, hdr, tracks, frame_size, i=None):
     """
     Extract a cropped region around a tracked solar feature.
 
@@ -143,7 +148,7 @@ def track_region(image, hdr, tracks, frame_size, i):
     frame_size : int
         Size of the square crop in pixels.
     i : int
-        Index of the current frame in `tracks`.
+        Index of the current frame in `tracks`.  Set to 'None' if only one coordinate pair is entered.
 
     Returns
     -------
@@ -162,24 +167,31 @@ def track_region(image, hdr, tracks, frame_size, i):
     cy = hdr[1].header['CRPIX2']
     dy = hdr[1].header['CDELT2']
 
-    # the rotated frame locations (x_arc and y_arc) must be converted into pixels using the header information
-    x_arc = tracks[i, 0]  #from previous step
-    y_arc = tracks[i, 1]  #from previous step
+    if i is not None:
+        # the rotated frame locations (x_arc and y_arc) must be converted into pixels using the header information
+        x_arc = tracks[i, 0]  #from previous step
+        y_arc = tracks[i, 1]  #from previous step
+    else:
+        x_arc = tracks[0]
+        y_arc = tracks[1]
 
     # converst to pixels:
-    x_pix = int(round(cx - (x_arc / dx)))
-    y_pix = int(round(cy - (y_arc / dy)))
+    x_pix = int(round(cx + (x_arc / dx)))
+    y_pix = int(round(cy + (y_arc / dy)))
 
+    print(f'x_pixel: {x_pix}')
+    print(f'y_pixel: {y_pix}')
 
-    # Fail-safe for when the frame would extend over the initial full disk image size:
-    half_frame = int(frame_size//2)
+    # FAIL-SAVE for when the frame would extend over the initial full disk image size:
+    half_frame = int(frame_size//2) #rename for convinience
 
     if x_pix<(half_frame):
         #set minimum position to 0 + half_frame:
         x_f = int(half_frame)
         pic_crop = image[y_pix-half_frame:y_pix+half_frame, 0:int(frame_size)]
 
-    elif x_pix>(W-(half_frame)):
+    elif x_pix>(W-half_frame):
+        #frame_location.append(x_failsave) #overwrite old location, add new one
         x_f = int(W-half_frame)
         #set maximum position to full width W - half frame
         pic_crop = image[y_pix-half_frame:y_pix+half_frame, (int(W)-int(frame_size)):int(W)]
@@ -189,14 +201,14 @@ def track_region(image, hdr, tracks, frame_size, i):
         pic_crop = image[y_pix-half_frame:y_pix+half_frame, x_pix-half_frame:x_pix+half_frame]
 
 
-    y_f = y_pix
+    y_f = y_pix # no fail save in y-direction needed, since most active regions are not near the poles
     pic_crop = image[y_f-half_frame:y_f+half_frame, x_f-half_frame:x_f+half_frame]
-    pic_rot = np.rot90(pic_crop, 2)             # rotate image the right way
-    crop = np.nan_to_num(pic_rot, nan=1)        # fill nan's outside the solar disc with 1's
+    crop = np.nan_to_num(pic_crop, nan=1)        # fill nan's outside the solar disc with 1's
 
 
-    #update frame locations in case fail-safe was used:
-    x_arc_f = (cx - x_f) * dx
+    #update frame locations in case fail-save was used:
+    x_arc_f = (x_f - cx) * dx
+
     frame_pos = np.array([x_arc_f, y_arc], dtype=float)
 
 
@@ -249,7 +261,7 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
     # Load reference image + header
     first_file = series[0]
     first_img = f.getdata(os.path.join(directory, first_file))
-    first_img = np.flipud(np.fliplr(first_img))  # FITS orientation fix, because FITS are rotated 180 deg compared to observation
+    first_img = np.flipud(np.fliplr(first_img))  # FITS orientation fix, because FITS are rotated 180deg compared to observation
 
     H, W = first_img.shape# Height, Width
 
@@ -314,6 +326,7 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
 
             ax.set_xlabel('x [arcsec]')
             ax.set_ylabel('y [arcsec]')
+            #ax.set_title('time-summed strip')
 
             # optional frames
             if frame_size is not None:
@@ -455,22 +468,39 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
 
         return None, frames
 
+'''
 
-def refine_centering(image_crop, current_x0, current_y0, frame_size, max_shift=None):
+def refine_centering(image_crop, current_x0, current_y0, frame_size):
     """
-    Refine the center position of a cropped image by calculating the center of mass of the darkest feature.
-    Includes a distance-based threshold to reject tracking anomalies near the solar limb.
+    Refine the center position of a cropped image by centering on the darkest feature. The function identifies the largest contiguous dark region (assumed to be a sunspot) and shifts the crop center so that this feature is centered within the frame.
+
+    Parameters
+    ----------
+    image_crop : numpy.ndarray
+        2D cropped image array.
+    current_x0 : int or float
+        Current x-coordinate (pixel) of the crop center in the original image.
+    current_y0 : int or float
+        Current y-coordinate (pixel) of the crop center in the original image.
+    frame_size : int
+        Size of the square crop in pixels.
+
+    Returns
+    -------
+    refined_x0 : int or float
+        Updated x-coordinate of the crop center.
+    refined_y0 : int or float
+        Updated y-coordinate of the crop center.
     """
 
     # Find the average brightness to establish a baseline
     median_val = np.nanmedian(image_crop)
     if median_val <= 0:
-        return current_x0, current_y0, False
+        return current_x0, current_y0
 
     # Identify pixels that are significantly darker (the sunspot)
-    # Mask off-disk pixels and invalid data (<= 0 or NaN)
-    mask = (image_crop <= (0.90 * median_val)) & (image_crop > 0) & np.isfinite(image_crop)
-
+    # 0.90 is a standard threshold to isolate the spot from the quiet sun
+    mask = image_crop <= (0.90 * median_val)
     labeled_pixels, num_features = label(mask)
 
     if num_features > 0:
@@ -479,21 +509,89 @@ def refine_centering(image_crop, current_x0, current_y0, frame_size, max_shift=N
         feature_sizes[0] = 0  # Ignore the background
         main_feature_id = int(np.argmax(feature_sizes))
 
-        # Calculate the center of the sunspot within the crop
+        # Calculate the center of the sunspot
         y_center, x_center = center_of_mass(labeled_pixels == main_feature_id)
 
         if np.isfinite(x_center) and np.isfinite(y_center):
             # Shift the original x0, y0 so the spot is in the middle of the frame
+            #refined_x0 = int(np.clip(current_x0 + x_center - frame_size / 2, 0, image_crop.shape[1]))
+            #refined_y0 = int(np.clip(current_y0 + y_center - frame_size / 2, 0, image_crop.shape[0]))
             refined_x0 = int(current_x0 + x_center - frame_size / 2)
             refined_y0 = int(current_y0 + y_center - frame_size / 2)
+            return refined_x0, refined_y0
+
+    return current_x0, current_y0
+'''
+
+######### new refine version: ########
+
+def refine_centering(image_crop, current_x0, current_y0, frame_size, max_shift=None, tracking_mode="largest"):
+    """
+    Refine the center position of a cropped image by centering on the darkest feature. The function identifies the largest contiguous dark region (assumed to be a sunspot) and shifts the crop center so that this feature is centered within the frame. Supports 'largest' (single spot) or 'evolving' (scattered active region) tracking modes.
+
+    Parameters
+    ----------
+    image_crop : numpy.ndarray
+        2D cropped image array.
+    current_x0 : int or float
+        Current x-coordinate (pixel) of the crop center in the original image.
+    current_y0 : int or float
+        Current y-coordinate (pixel) of the crop center in the original image.
+    frame_size : int
+        Size of the square crop in pixels.
+
+    Returns
+    -------
+    refined_x0 : int or float
+        Updated x-coordinate of the crop center.
+    refined_y0 : int or float
+        Updated y-coordinate of the crop center.
+    """
+
+
+    # Smooth the image via a gaussian blur to not be reliant on individual dark pixels:
+    image_blur = cv2.GaussianBlur(image_crop,(7,7),0)
+
+    # Find the average brightness to establish a baseline
+    median_val = np.nanmedian(image_blur)
+    if median_val <= 0:
+        return current_x0, current_y0, False
+
+
+    # Identify pixels that are significantly darker (the sunspot)
+    mask = (image_blur <= (0.90 * median_val)) & (image_blur > 0) & np.isfinite(image_blur)
+
+    labeled_pixels, num_features = label(mask)
+
+    if num_features > 0:
+        if tracking_mode == "largest":
+            # Find the largest dark feature in the crop
+            feature_sizes = np.bincount(labeled_pixels.ravel())
+            feature_sizes[0] = 0  # Ignore the background
+            main_feature_id = int(np.argmax(feature_sizes))
+
+            # Calculate the center of the largest spot
+            y_center, x_center = center_of_mass(labeled_pixels == main_feature_id)
+
+        elif tracking_mode == "evolving":
+            # Calculate the center of mass using ALL detected dark pixels
+            y_center, x_center = center_of_mass(mask)
+
+        else:
+            print(f"[WARN] Unknown tracking_mode '{tracking_mode}', defaulting to largest.")
+            feature_sizes = np.bincount(labeled_pixels.ravel())
+            feature_sizes[0] = 0
+            y_center, x_center = center_of_mass(labeled_pixels == int(np.argmax(feature_sizes)))
+
+        if np.isfinite(x_center) and np.isfinite(y_center):
+            # Shift the original x0, y0 so the spot is in the middle of the frame
+            refined_x0 = int(current_x0  - (frame_size / 2) + x_center)
+            refined_y0 = int(current_y0  - (frame_size / 2) + y_center)
 
             # Check distance from center
             accepted = True
             if max_shift is not None:
-                # We check how far the spot is from the center of the crop window.
-                # If it's further than max_shift, it's likely a false positive (like the limb).
                 correction_dist = np.sqrt((x_center - frame_size / 2)**2 + (y_center - frame_size / 2)**2)
-
                 if correction_dist > max_shift:
                     accepted = False
                     return current_x0, current_y0, accepted
@@ -504,9 +602,12 @@ def refine_centering(image_crop, current_x0, current_y0, frame_size, max_shift=N
     return current_x0, current_y0, False
 
 
+#################################
+
+
 def center(image, mask=None, threshold=None, ellipse=False, save_path=None):
     """
-    Determine the center of a solar feature (e.g. sunspot) in an image. The function either uses a provided binary mask or generates one via thresholding and morphological operations. It then identifies the largest contour (assumed to be the main feature) and computes its center using either image moments or ellipse fitting.
+    Determine the center of a solar feature (e.g. sunspot) in an image. The function either uses a provided binary mask or generates one via    thresholding and morphological operations. It then identifies the largest contour (assumed to be the main feature) and computes its center using    either image moments or ellipse fitting.
 
     Parameters
     ----------
@@ -543,7 +644,9 @@ def center(image, mask=None, threshold=None, ellipse=False, save_path=None):
         #flip = image[::-1,:,:] # revise height in (height, width, channel)
         #(this flip is because of the way the FITS files were open, so that the axis are reversed)
 
-        flip = image[::-1, :]
+        #flip = image[::-1, :]
+        #turned this off for now? -->
+        flip = image
 
         # Convert BGR to grayscale:
         #grayscaleImage = cv2.cvtColor(flip, cv2.COLOR_BGR2GRAY)
@@ -555,6 +658,9 @@ def center(image, mask=None, threshold=None, ellipse=False, save_path=None):
         #blur the image to make granulation appear lighter in contrast to sunspots
         blur = cv2.GaussianBlur(grayscaleImage,(7,7),0)
         threshValue, binaryImage = cv2.threshold(blur,thresh,255,cv2.THRESH_BINARY_INV)
+
+        #plt.imshow(binaryImage, cmap ='gray' )
+        #plt.gca().invert_yaxis() #making sure the axis are converted
 
         kernel = np.ones((3, 3), np.uint8)  #size of the kernel
         opIterations = 3 #number of iterations
@@ -581,18 +687,26 @@ def center(image, mask=None, threshold=None, ellipse=False, save_path=None):
     if ellipse :
         ellipse = cv2.fitEllipse(biggest_contour)
         (x, y), (w, h), ang = cv2.fitEllipse(biggest_contour) # fit ellipse and save the parameters
-        cx = (int(x))    #center x-coordinate
-        cy = (int(y))    #center x-coordinate
+        cx = int(x)    #center x-coordinate
+        cy = int(y)    #center x-coordinate
         # draw the center into the original sunspot image and save those as pngs in the corresponding folder
         if save_path is not None:
-            output = image.copy() # the image, where the center and the ellipse should be drawn on
+            output = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) # the image, where the center and the ellipse should be drawn on
             #draw ellipse + center
-            cv2.ellipse(output, ellipse, (0, 255, 0), 2)
-            cv2.circle(output, (int(x), int(y)), 3, (0, 255, 0), -1)
-            plt.imshow(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
+            #output = cv2.flip(output, 0)
+            output = cv2.drawContours(output, contours, -1, (255,0,0), 1)
+            output = cv2.ellipse(output, ellipse, (0, 0, 255), 2)
+            #output = cv2.circle(output, (int(x), int(y)), 3, (0, 255, 0), -1)
+            output = cv2.line(output, (cx,cy), (cx,cy), (0,255,0), 10)
+
+            #plt.imshow(cv2.cvtColor(output, cv2.COLOR_BGR2RGB))
+            plt.imshow(output, cmap='gray')
+
             plt.gca().invert_yaxis()
-            cv2.drawContours(output, contours, -1, (0,255,0), 3),
-            plt.savefig(os.path.join(save_path, '_eli.png')) #save final pictures into new folder (as .png)
+
+            #cv2.drawContours(output, contours, -1, (0,255,0), 3)
+            #plt.savefig(os.path.join(save_path, '_eli.png')) #save final pictures into new folder (as .png)
+            plt.savefig(save_path+'_elli.png')
         plt.close()
 
     else:
@@ -605,10 +719,15 @@ def center(image, mask=None, threshold=None, ellipse=False, save_path=None):
         if save_path is not None:
             # Draw centroid onto the overlay image (BGR):
             bgrImage = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            #bgrImage = cv2.flip(bgrImage, 0)
+            bgrImage = cv2.drawContours(bgrImage, contours, -1, (255,0,0), 1)
             bgrImage = cv2.line(bgrImage, (cx,cy), (cx,cy), (0,255,0), 10) #set color and thickness of center
             plt.imshow(bgrImage, cmap = 'gray')
+
             plt.gca().invert_yaxis()            # flip axis to be the right way around
-            plt.savefig(os.path.join(save_path, '_cen.png')) # save image (with centroid and contours drawn in)
+
+            #plt.savefig(os.path.join(save_path, '_cen.png')) # save image (with centroid and contours drawn in)
+            plt.savefig(save_path+'_cent.png')
         plt.close()
 
     return cx, cy
@@ -650,9 +769,9 @@ def position_conversion(center, frame, frame_size, solar_center, pix_to_arc, fli
     center = np.asarray(center)     # double check in case center is a list instead of array
     frame = np.asarray(frame)       # double check in case frame is a list instead of array
 
-    frame_pix = solar_center - (frame / pix_to_arc)
+    frame_pix = solar_center + (frame / pix_to_arc)
 
-    position_pix = frame_pix + frame_size/2 - center    # relate center back to frame positon
+    position_pix = frame_pix - frame_size/2 + center    # relate center back to frame positon
     position_arc = (position_pix - solar_center) * pix_to_arc   # convert to solar arcsec
 
     # fail save due to HMI images axis flip, assumed to be true aka flip is needed, but can be overwritten in the function
@@ -783,7 +902,7 @@ def differential_rotation_rate(positions, durations, R_sun, L, B):
     masked_longitude_diff = ma.masked_where(~mask, longitude_diff)
 
     # timesteps/durations masking:
-    durations = durations[1:]
+    durations = durations[1:] #this is new, but I think this is wrong.
     masked_durations = ma.masked_where(~mask, durations)
 
     # time axis:
@@ -793,7 +912,12 @@ def differential_rotation_rate(positions, durations, R_sun, L, B):
     time_axis = time_axis_days * 24
 
     # rotation rate omega in [deg/day] in carrington system with base rate of 14.184 [deg/day]
-    omega = masked_longitude_diff * masked_durations
+    #omega = masked_longitude_diff * masked_durations
+
+    print(f'longitude difference: {masked_longitude_diff}')
+
+    omega = masked_longitude_diff/ masked_durations
+
     omega_with_carrington = omega + 14.184
 
     return omega_with_carrington, time_axis
@@ -863,12 +987,21 @@ def sunspot_rotation_rate(file_array, directory, x0, y0, frame_size, threshold=N
     position_arc : numpy.ndarray
         Feature positions in arcseconds.
     """
+    # --- 1. Time ---
     print('Step 1: Calculate Time Steps...')
     durations = get_time_steps(file_array, directory)
+    print(f'durations: {durations}')
 
+    # --- 2. Predict tracks ---
     print('Step 2: Calculate Positions...')
     tracks = calculate_tracks(file_array, directory, x0, y0, durations)
+    print(f'tracks: {tracks}')
 
+    # for now as a test for refine:
+    tracks_refined = tracks.copy()
+
+
+    # --- 3. Header info ---
     print('Step 3: Get Header Info...')
     sun_cx, sun_cy, dx, dy, R_sun, L, B, times = extract_header_params(file_array, directory)
 
@@ -878,86 +1011,102 @@ def sunspot_rotation_rate(file_array, directory, x0, y0, frame_size, threshold=N
     center_positions = []
     frame_positions = []
 
+    if refine:
+        frame_positions_refined = []
+
+    # --- 4. Loop over images ---
     print('Step 4: Crop Regions & Find Center Coordinates...')
 
     cropped_cube = np.zeros([len(file_array), frame_size, frame_size])
 
+    # TEsT CUBE
+    refined_cube = np.zeros([len(file_array), frame_size, frame_size])
+
     for i, fname in enumerate(file_array):
 
         image = f.getdata(os.path.join(directory, fname))
+        header = f.getheader(os.path.join(directory, fname))
+        header = f.open(os.path.join(directory, fname))
 
-        hdul = f.open(os.path.join(directory, fname))
-        header = hdul[1].header
 
-        # The input data (hmi.Ic_noLimbDark_720s) is already flattened by JSOC.
-        # We pass the image directly to the tracker.
-        frame_pos, crop = track_region(image, hdul, tracks, frame_size, i)
+        image_flip = np.rot90(image, 2)
 
+        # --- crop ---
+        frame_pos, crop = track_region(image_flip, header, tracks, frame_size, i)
+        print(f'frame_pos: {frame_pos}')
+        #print(f'shape: {frame_pos.shape}')
+
+
+        # --- optional refinement ---
         if refine:
-            # Extract header parameters for pixel conversion
-            cx_hd = header['CRPIX1']
-            cy_hd = header['CRPIX2']
-            dx_scale = header['CDELT1']
-            dy_scale = header['CDELT2']
+            # get global pixel location of frame for each given step
+            hdr = header
+            cx = hdr[1].header['CRPIX1']
+            cy = hdr[1].header['CRPIX2']
+            dx = hdr[1].header['CDELT1']
+            dy = hdr[1].header['CDELT2']
 
-            # Convert the current theoretical arcsec position into pixels
-            curr_x_pix = cx_hd - (frame_pos[0] / dx_scale)
-            curr_y_pix = cy_hd - (frame_pos[1] / dy_scale)
+            frame_pix_x = int(round(cx + frame_pos[0] / dx))
+            frame_pix_y = int(round(cy + frame_pos[1] / dy))
 
-            # Un-rotate crop orientation to match the original image frame
-            unrotated_crop = np.rot90(crop, 2)
+            print(f'frame pixel x: {frame_pix_x}')
+            print(f'frame pixel y: {frame_pix_y}')
 
-            # Refine centering using pixel coordinates
-            new_x_pix, new_y_pix, accepted = refine_centering(
-                unrotated_crop, curr_x_pix, curr_y_pix, frame_size, max_shift=50
-            )
+            # recenter the image around a feature:
+            new_x, new_y, accept = refine_centering(crop, frame_pix_x, frame_pix_y, frame_size, tracking_mode="largest")
 
-            if accepted:
-                # Convert the refined pixel coordinates back to arcseconds
-                new_x_arc = (cx_hd - new_x_pix) * dx_scale
-                new_y_arc = (cy_hd - new_y_pix) * dy_scale
+            print(f'new x pixel: {new_x}')
+            print(f'new y pixel: {new_y}')
 
-                #Update Future Tracks
-                shift_x = new_x_arc - tracks[i, 0]
-                shift_y = new_y_arc - tracks[i, 1]
+            #convert back to arc_sec
+            new_x_arc = (new_x - cx) * dx
+            new_y_arc = (new_y - cy) * dy
+            frame_pos_refined = np.array([new_x_arc, new_y_arc])
+            print(f'frame position refined: {frame_pos_refined}')
 
-                # Apply this corrective shift to ALL future points in the trajectory
-                if i + 1 < len(tracks):
-                    tracks[i+1:, 0] += shift_x
-                    tracks[i+1:, 1] += shift_y
+            # re-crop with refined position
+            #frame_pos, crop = track_region(image, header, frame_pos_refined, frame_size)
 
-                # Update current track so track_region can read it without throwing an IndexError
-                tracks[i, 0] = new_x_arc
-                tracks[i, 1] = new_y_arc
-
-                # re-crop with refined position (using the updated tracks array)
-                frame_pos, crop = track_region(image, hdul, tracks, frame_size, i)
+            frame_pos2, crop2 = track_region(image_flip, header, frame_pos_refined, frame_size)
+            print(f'frame position after refinement & cropping: {frame_pos2}')
 
         cropped_cube[i] = crop #fill cube
+        refined_cube[i] = crop2
 
+        # --- find center ---
         if save_path is not None:
-            name = 'center/'+str(i)
-            new_path = os.path.join(directory, name)
+            name = 'center_'+str(i)
+            new_path = save_path + name
+
         else:
             new_path = None
 
-        cx, cy = center(crop, threshold=threshold, ellipse=ellipse, save_path=new_path)
+        #cx, cy = center(crop, threshold=threshold, ellipse=ellipse, save_path=new_path)
+        cx, cy = center(crop2, threshold=threshold, ellipse=ellipse, save_path=new_path)
 
         center_positions.append([cx, cy])
-        frame_positions.append(frame_pos)
+        frame_positions.append(frame_pos2)
 
     center_positions = np.array(center_positions)
     frame_positions = np.array(frame_positions)
 
-    f.writeto('cropped_cube_TEST.fits', np.nan_to_num(cropped_cube), overwrite=True) #save cube
+    f.writeto(os.path.join(directory, 'cropped_cube_TEST.fits'), np.nan_to_num(cropped_cube), overwrite=True) #save cube
+    f.writeto(os.path.join(directory, 'refined_cube_TEST.fits'), np.nan_to_num(refined_cube), overwrite=True) #save cube
 
+    print(f'center positions: {center_positions}')
+    print(f'frame_positions: {frame_positions}')
 
+    # --- 5. Convert coordinates ---
     print('Step 5: Convert Coordinates...')
-    position_pix, position_arc = position_conversion(center_positions, frame_positions, frame_size, solar_center, pix_to_arc, flip_x=-1, flip_y=-1)
+    position_pix, position_arc = position_conversion(center_positions, frame_positions, frame_size, solar_center, pix_to_arc, flip_x=1, flip_y=1)
+    print(f'position_pix: {position_pix}')
+    print(f'position_arc: {position_arc}')
 
+    # --- 6. Rotation Rate ---
     print('Step 6: Calculate Carrington Rotation Rate...')
     omega, time_axis = differential_rotation_rate(position_arc, durations, R_sun, L, B)
 
     print('DONE!')
 
     return omega, time_axis, position_arc
+
