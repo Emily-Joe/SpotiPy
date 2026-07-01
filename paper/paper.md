@@ -50,7 +50,7 @@ GREGOR solar telescope [@schmidt2012], resulting in strong
 `SpotiPy` is a Python package developed for feature identification and tracking
 in full-disk solar observations. The framework has been
 primarily designed for use with data from the Helioseismic and Magnetic Imager
-(HMI) [@scherrer2012] and the Atmospheric Imaging Assembly [AIA, @lemen2012]
+[HMI, @scherrer2012] and the Atmospheric Imaging Assembly [AIA, @lemen2012]
 aboard SDO, although the methods are not instrument-specific. The pipeline
 enables the identification and tracking of arbitrary fields of view over time.
 While initial applications have focused on sunspot studies, the implemented
@@ -70,7 +70,7 @@ handled through custom scripts by individual researchers, which can be difficult
 to reproduce and maintain across projects. While foundational libraries such as `astropy`
 [@astropy2022] handle the underlying coordinate transformations and instrument-specific 
 packages such as `aiapy` [@aiapy2020] provide excellent calibration routines for SDO/AIA data, 
-they lack the specific, multi-instrument feature-tracking integration that `SpotiPy` provides
+they lack the specific, multi-instrument feature-tracking integration that `SpotiPy` provides.
 
 `SpotiPy` addresses this practical gap by providing a modular framework that
 supports coordinated retrieval of large datasets from HMI and AIA, sub-pixel
@@ -78,7 +78,9 @@ alignment of multi-instrument observations, and preprocessing steps such as limb
 darkening correction. While the package was designed with feature tracking and
 active region analysis in mind, its modular components can be applied to other
 full-disk studies or as standalone functions within existing pipelines, enabling
-reuse and sustained development.
+reuse and sustained development. `SpotiPy` was developed to facilitate high-throughput, 
+reproducible analysis of solar features and has already been successfully employed to 
+investigate the center-to-limb variations (CLV) of sunspots, faculae, and the solar network [@pietrow2026].
 
 # Functionality
 
@@ -105,9 +107,9 @@ Table 1: HMI and AIA full-disk data products and passbands accessible via the do
 | HMI | Line depth | `hmi.Ld_45s`, `hmi.Ld_720s` |
 | HMI | LOS Magnetograms | `hmi.M_45s`, `hmi.M_720s` |
 | HMI | Dopplergrams | `hmi.V_45s`, `hmi.V_720s` |
-| AIA | Continuum Intensity (4500 Å) | `aia.lev1_vis_1h` |
-| AIA | Ultraviolet (1600 Å, 1700 Å) | `aia.lev1_uv_24s` |
-| AIA | Extreme UV (94 Å, 131 Å, 193 Å, 211 Å, 304 Å, 335 Å) | `aia.lev1_euv_12s` |
+| AIA | Continuum Intensity (4500\ Å) | `aia.lev1_vis_1h` |
+| AIA | Ultraviolet (1600 Å, 1700\ Å) | `aia.lev1_uv_24s` |
+| AIA | Extreme UV (94\ Å, 131\ Å, 193\ Å, 211\ Å, 304\ Å, 335\ Å) | `aia.lev1_euv_12s` |
 
 
 To retrieve a time series, users must configure the following core parameters:
@@ -120,10 +122,10 @@ To retrieve a time series, users must configure the following core parameters:
 
 While `download_series` is a general-purpose wrapper capable of retrieving any
 JSOC data series, the following example demonstrates fetching the specific HMI
-continuum and AIA 1700 Å data required for the active region pipeline:
+continuum and AIA 1700\ Å data required for the active region pipeline:
 
 ```python
-# Download HMI continuum intensity and AIA 1700 A time series
+# Download HMI continuum intensity and AIA 1700 Å time series
 from spotipy.downloading import download_series
 
 hmi_files = download_series(
@@ -161,14 +163,14 @@ from spotipy.aligning import align_images
 align_images(aia_path, hmi_reference_path, output_path)
 ```
 
-![Reprojection of AIA 1700 Å intensity onto the HMI pixel grid. Left: original AIA grid.
+![Reprojection of AIA 1700\ Å intensity onto the HMI pixel grid. Left: original AIA grid.
 Center: HMI reference. Right: AIA reprojected to HMI
 grid.\label{fig:alignment}](fig2_alignment.pdf){ width=100% }
 
 ## 3. Limb Darkening Correction
 
 This function implements radial-profile subtraction to remove the center-to-limb
-intensity profile for HMI continuum and AIA 1600 Å and 1700 Å observations, 
+intensity profile for HMI continuum and AIA 1600\ Å and 1700\ Å observations, 
 which is essential for reliable intensity thresholding across
 the full solar disk. Limb darkening is a radiative transfer effect induced by viewing geometry
 that allows the observer to look deeper into the atmosphere at the center of the solar disc 
@@ -190,12 +192,12 @@ from spotipy.limbdarkening_removal import remove_limb_darkening, get_header_geom
 aia_corrected = remove_limb_darkening(aia_raw, center=(cx, cy), radius_pix=r_pix)
 ```
 
-![AIA 1700 Å intensity before (left) and after (right) limb darkening
+![AIA 1700\ Å intensity before (left) and after (right) limb darkening
 correction.\label{fig:limbdark}](fig1_limb_darkening_aia.pdf){ width=100% }
 
 ![Radial intensity profile of the solar disk (left) and its derivative (right). 
 The left panel displays the raw intensity profile overlaid with a 5th-order polynomial 
-fit describing the center-to-limb variation (CLV). The dashed vertical 
+fit describing the CLV. The dashed vertical 
 line marks the limb radius extracted from the FITS header parameters (1564 pixels). 
 The derivative profile on the right illustrates the sharp intensity drop at the limb 
 boundary.\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100% }
@@ -205,12 +207,11 @@ boundary.\label{fig:radialprofile}](fig1b_radial_profile.pdf){ width=100% }
 `SpotiPy` uses intensity thresholding combined with morphological operations to
 generate binary masks for umbra, penumbra, and extended spot regions from HMI
 continuum intensity, and for plage, network, and quiet Sun regions from AIA
-1700 Å [@Shen2018; @Verma2018]. The segmentation is performed using intensity thresholding combined with size-based 
-classification. Thresholds are defined relative to the normalized quiet-Sun intensity, 
-with lower and upper bounds assigned to each class (quiet Sun, umbra, penumbra, network, 
-and plage). These thresholds were empirically calibrated to values of x, y, z, a, b, and c 
-for the respective feature types, and are broadly consistent with those reported in previous 
-studies [@Chapman1989; @gyori1998; @preminger2001; @solanki2003; @kiess2014; @hoeksema2014]. 
+1700\ Å [@Shen2018; @Verma2018]. The segmentation is performed using intensity
+thresholding combined with size-based  classification. These thresholds were 
+empirically calibrated to $8–43\%$ of the normalized quiet-Sun intensity for the 
+umbra, $59–94\%$ for the penumbra, $>15\%$ for the network, and $>20\%$ for plage. These 
+values are broadly consistent with those reported in previous studies [@Chapman1989; @gyori1998; @preminger2001; @solanki2003; @kiess2014; @hoeksema2014]. 
 
 To distinguish between network and plage, contiguous regions exceeding the network intensity 
 threshold are further classified based on their area: structures larger than $450$ pixels are
@@ -232,8 +233,8 @@ from spotipy.segmentation import get_masks, get_aia_masks
 hmi_masks = get_masks(
     hmi_norm,                 # normalized HMI continuum intensity map
     disk_mask=ondisk,         # boolean mask selecting the solar disk
-    umbra_range=(10, 55),     # umbra: 8-bit scale (~8-43% of quiet Sun)
-    penumbra_range=(75, 120), # penumbra: 8-bit scale (~59-94% of quiet Sun)
+    umbra_range=(10, 55),     # umbra: 8-bit scale (~$8-43\%$ of quiet Sun)
+    penumbra_range=(75, 120), # penumbra: 8-bit scale (~$59-94\%$ of quiet Sun)
     cleanup=True              # applies connected-component filter
 )
 
@@ -249,14 +250,14 @@ aia_masks = get_aia_masks(
 )
 ```
 
-![Full-disk segmentation map derived from HMI continuum intensity and AIA 1700 Å intensity. Left:
-HMI continuum intensity. Center: AIA 1700 Å. Right: segmentation map showing
+![Full-disk segmentation map derived from HMI continuum intensity and AIA 1700\ Å intensity. Left:
+HMI continuum intensity. Center: AIA 1700\ Å. Right: segmentation map showing
 quiet Sun (gray), network (blue), plage (gold), and sunspot (red). Excluded
 regions such as pores and regions beyond the limb are shown in
 black.\label{fig:fulldisk}](fig3_full_disc_segmentation.pdf){ width=100% }
 
 ![Sunspot segmentation of active region NOAA 12738 at central meridian passage. Left: HMI continuum ROI. 
-Center: AIA 1700 Å intensity ROI. Right: Combined segmentation map showing umbra (red), penumbra 
+Center: AIA 1700\ Å intensity ROI. Right: Combined segmentation map showing umbra (red), penumbra 
 (orange), plage (gold), network (blue), and quiet Sun (gray). Small, isolated dark pores 
 excluded (black) to ensure the analysis remains focused on the primary active region.
 \label{fig:spotcrop}](fig4_spot_segmentation.pdf){ width=100% }
@@ -268,15 +269,16 @@ using the differential rotation model derived by @loessnitz2025. This enables
 consistent cropping of a tracked region across a multi-day time series. The 
 tracking module first applies this physical model to predict where a feature at 
 a given heliographic position will appear in subsequent frames. To account for 
-local proper motions or small model deviations, the pipeline utilizes the 
-`refine_centering` function to "lock on" to the darkest pixels of the sunspot umbra.
-This ensures the feature remains centered within the extraction window throughout its transit.
+local proper motions or small model deviations, the pipeline utilizes the `refine_centering` 
+function. To avoid tracking instabilities caused by single-pixel noise, this function applies 
+a spatial smoothing to the ROI and calculates the center of mass of the largest 
+contiguous umbral feature.
 
 The resulting coordinates are returned as NumPy arrays containing the refined coordinates for each time step. These data are used to generate the extraction crops and 
 segmentation maps shown in \autoref{fig:strip}, which displays a time-summed strip of active region NOAA 12738 as 
 it travels accross the solar disk. By calculating these tracks dynamically from the FITS headers, 
 the pipeline ensures reproducibility without relying on intermediate external data files.
-
+  
 ```python
 # Track a solar feature and generate a time-summed visual strip
 from spotipy.tracking import track_spots, refine_centering, strip
