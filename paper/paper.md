@@ -262,23 +262,14 @@ Center: AIA 1700\ Å intensity ROI. Right: Combined segmentation map showing umb
 excluded (black) to ensure the analysis remains focused on the primary active region.
 \label{fig:spotcrop}](fig4_spot_segmentation.pdf){ width=100% }
 
+
 ## 5. Tracking
 
-`SpotiPy` computes the expected pixel position of a solar feature over time 
-using the differential rotation model derived by @loessnitz2025. This enables
-consistent cropping of a tracked region across a multi-day time series. The 
-tracking module first applies this physical model to predict where a feature at 
-a given heliographic position will appear in subsequent frames. To account for 
-local proper motions or small model deviations, the pipeline utilizes the `refine_centering` 
-function. To avoid tracking instabilities caused by single-pixel noise, this function applies 
-a spatial smoothing to the ROI and calculates the center of mass of the largest 
-contiguous umbral feature.
+The tracking module is a fundamental part of `SpotiPy`, as it provides feature-specific local data that can be used to study different parameters of a region over time and across the entire solar disk. Additionally, it calculates the differential rotation rate for a given feature (primarily sunspots).
 
-The resulting coordinates are returned as NumPy arrays containing the refined coordinates for each time step. These data are used to generate the extraction crops and 
-segmentation maps shown in \autoref{fig:strip}, which displays a time-summed strip of active region NOAA 12738 as 
-it travels accross the solar disk. By calculating these tracks dynamically from the FITS headers, 
-the pipeline ensures reproducibility without relying on intermediate external data files.
-  
+This module is based on the processes laid out in [@loessnitz2025]. For a given start position, which can be selected via an interactive clicker, it uses a [@sunpy_community2020] model to compute the expected position of a solar feature over a time series. The resulting coordinates are returned as NumPy arrays. To isolate the feature or ROI, the full-disk data are then cropped to a window around the calculated coordinates. To account for local motions and deviations from the rotation model, the pipeline provides an optional recentering function that refines the feature position centering the window around the darkest feature in the cropped image. To avoid tracking instabilities caused by single-pixel noise, this function applies spatial Gaussian smoothing to the ROI and calculates the center of mass of the largest contiguous umbral feature. This pipeline ensures that the feature remains fully within the frame and centered. The extracted crops can be visualized in time-summed strips, as shown in Figure \autoref{fig:strip}. It shows active region NOAA 12738 as it moves across the solar disk, with the frame indicating the cropped region for each time step. This series of crops can then be used for segmentation maps ([Segmentation](#sec:segmentation)) or further analysis.
+
+
 ```python
 # Track a solar feature and generate a time-summed visual strip
 from spotipy.tracking import track_spots, refine_centering, strip
@@ -308,17 +299,9 @@ yellow, indicates the progression of
 time.\label{fig:strip}](time_summed_strip.pdf){ width=100% }
 
 
-The Tracking Module additionally enables the determination of feature rotation rates. Using the masks produced by the [Segmentation](#sec:segmentation) module, features such as sunspots are identified at each timestep. Their centers are then derived either from image moments
-or, for approximately circular features, by fitting a minimal-area ellipse.
-These positions are tracked over time and transformed into heliographic coordinates [@Thompson2006]
-using observational parameters such as the solar radius, tilt, and distance obtained from the 
-FITS header. This deprojection allows rotation rates to be expressed in the Carrington reference
-frame [@Carrington1863], ensuring comparability with previous studies. The transformation follows
-the method described by Balthasar [@Balthasar1979] (see \autoref{fig:rotation_rate}).
+The determination of feature rotation rates can be performed using either the masks produced by the [Segmentation](#sec:segmentation) module or an internal masking process specifically designed for sunspots. Both approaches identify features such as sunspots at each time step. The centers of the sunspot masks are then determined either from image moments or, for approximately circular features, by fitting a minimal-area ellipse. The resulting positions are tracked over time and finally transformed into the heliographic coordinate system using observational parameters such as the solar radius, tilt, and distance obtained from the FITS header. This transformation is necessary to correct for projection effects caused by the spherical geometry, as illustrated in Figure \autoref{fig:rotation_rate}. In the heliographic coordinate system, every point on the visible solar surface can be described by its latitude and longitude. An additional radial coordinate can be included to describe points above or below the solar surface. After deprojection, the tracked positions are used to calculate rotation rates, which are expressed in the Carrington reference frame [@Carrington1863], ensuring comparability with previous rotation studies. This conversion follows the method described in [@Balthasar1979]. The Carrington System rotates as a rigid sphere along with the surface of the Sun. Consequently, the Carrington rotation number increases whenever the Carrington prime meridian coincides with the observed central meridian of the Sun, as seen from the Greenwich Observatory. This introduces discontinuities in the Carrington longitude and, consequently, gaps in the calculated rotation rate, as shown in Figure \autoref{fig:rotation_rate}, if the observations happen to coincide with a passing of the meridian. 
 
-![Rotation rate of a single feature (sunspot active region in NOAA 12738) during its disk passage. The left panel shows the calculated rotation rate without correcting for
-projection effects, the right panel shows the deprojected rotation rate in the Carrington rotation
-frame with the two available methods (central moment or ellipse fitting).\label{fig:rotation_rate}](fig7_rotation_plot_comparison.pdf){ width=100% }
+![Rotation rate of a single feature (a sunspot in active region NOAA 12738) during its passage across the solar disk. The left panel shows the calculated rotation rate without correcting for projection effects, while the right panel shows the deprojected rotation rate in the Carrington reference frame using the two available methods (image moments and ellipse fitting). Near the solar limb, the apparent motion of the feature corresponds to only a few pixels between consecutive frames. After deprojection, these small positional uncertainties translate into larger uncertainties in the calculated rotation rate. The breaks in the plotted curves occur where the Carrington longitude wraps from 360° to 0°. \label{fig:rotation_rate}](fig7_rotation_plot_comparison.pdf){ width=100% }
 
 
 # Acknowledgements
