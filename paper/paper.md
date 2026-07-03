@@ -39,10 +39,10 @@ instrumentation has made these features the subject of study for several
 centuries [@solanki2003; @Cretignier2024; @palumbo2024].
 
 In recent years, more focus has been placed on the consistent tracking and
-observations of active regions with space-based facilities such as the Solar
-Dynamics Observatory [SDO, @pesnell2012], the Hinode (Solar-B) Mission [@kosugi2007], the Chinese H$\alpha$ Solar
-Explorer [CHASE, @li2022], and the Interface Region Imaging Spectrograph
-[IRIS, @depontieu2014], but also in high resolution from the ground with
+observations of active regions with space-based facilities such as the Hinode (Solar-B) Mission [@kosugi2007], the Solar
+Dynamics Observatory [SDO, @pesnell2012], the Interface Region Imaging Spectrograph
+[IRIS, @depontieu2014] and the Chinese H$\alpha$ Solar
+Explorer [CHASE, @li2022], but also in high resolution from the ground with
 facilities such as the Swedish Solar Telescope [SST, @scharmer2003] and the
 GREGOR solar telescope [@schmidt2012], resulting in strong 
   progression of our understanding of these features.
@@ -53,9 +53,9 @@ primarily designed for use with data from the Helioseismic and Magnetic Imager
 [HMI, @scherrer2012] and the Atmospheric Imaging Assembly [AIA, @lemen2012]
 aboard SDO, although the methods are not instrument-specific. The pipeline
 enables the identification and tracking of arbitrary fields of view over time.
-While initial applications have focused on sunspot studies, the implemented
-procedures are equally valid for other types of solar features such as plage,
-network, and filaments.
+While initial applications have focused on photospheric features such as sunspots and plages, the implemented
+procedures are equally valid for other types of solar features such as
+networks and filaments.
 
 *Corresponding author: Alexander G.M. Pietrow ([apietrow@aip.de](mailto:apietrow@aip.de))*
 
@@ -80,18 +80,19 @@ active region analysis in mind, its modular components can be applied to other
 full-disk studies or as standalone functions within existing pipelines, enabling
 reuse and sustained development. `SpotiPy` was developed to facilitate high-throughput, 
 reproducible analysis of solar features and has already been successfully employed to 
-investigate the center-to-limb variations (CLV) of sunspots, faculae, and the solar network [@pietrow2026].
+investigate differential rotation of sunspots [@loessnitz2025] and center-to-limb variations
+(CLV) of sunspots, faculae, and the solar network [@pietrow2026].
 
 # Functionality
 
-`SpotiPy` is organized into five independent modules — (1) Data download,
-(2) Alignment, (3) Limb Darkening Correction, (4) Segmentation, and (5) Tracking —
+`SpotiPy` is organized into five independent modules — (1) Data downloading,
+(2) Data Alignment, (3) Limb Darkening Correction, (4) Segmentation, and (5) Tracking —
 that can be used together as a complete pipeline or individually within existing
 workflows.
 
 ## 1. Data downloading
 
-`SpotiPy` provides a wrapper around `Fido` that handles
+`SpotiPy` provides a wrapper around Sunpy's `Fido` framework that handles
 JSOC email authentication and batch retrieval of HMI and AIA time series.
 Because the module queries JSOC directly, it can retrieve any available data
 series. The most common SDO data products used for feature tracking are
@@ -102,7 +103,7 @@ Table 1: HMI and AIA full-disk data products and passbands accessible via the do
 | Instrument | Observable | Supported JSOC Series |
 | :--- | :--- | :--- |
 | HMI | Continuum Intensity | `hmi.Ic_45s`, `hmi.Ic_720s` |
-| HMI | Continuum Intensity (Flattened) | `hmi.Ic_nolimbDark_720s`, `hmi.Ic_nolimbDark_720s_nrt` |
+| HMI | Continuum Intensity (Flattened) | `hmi.Ic_nolimbDark_720s` |
 | HMI | Line width | `hmi.Lw_45s`, `hmi.Lw_720s` |
 | HMI | Line depth | `hmi.Ld_45s`, `hmi.Ld_720s` |
 | HMI | LOS Magnetograms | `hmi.M_45s`, `hmi.M_720s` |
@@ -214,7 +215,7 @@ umbra, $59–94\%$ for the penumbra, $>15\%$ for the network, and $>20\%$ for pl
 values are broadly consistent with those reported in previous studies [@Chapman1989; @gyori1998; @preminger2001; @solanki2003; @kiess2014; @hoeksema2014]. 
 
 To distinguish between network and plage, contiguous regions exceeding the network intensity 
-threshold are further classified based on their area: structures larger than $450$ pixels are
+threshold are further classified based on their area: namely structures larger than $450$ pixels are
 identified as plage, while smaller structures are classified as network. We note that this introduces a center-to-limb inconsistency, as a fixed pixel threshold corresponds to a larger physical area at smaller $\mu$. However, the chosen value has been found to provide a robust performance across the disk.
 
 The segmentation masks can be applied across all five HMI observables
@@ -268,7 +269,7 @@ excluded (black) to ensure the analysis remains focused on the primary active re
 
 The tracking module allows for consistent feature tracking at an arbitrary cadence, allowing for the study of a region and its parameters as it makes its way across the solar disk, and allows for the calculation of differential rotation rates. 
 
-This module is based on the processes laid out in [@loessnitz2025]. A core functionality is based on a [@sunpy_community2020] model to compute the expected position of a solar feature over a time series for a given start position, which can be selected via an interactive clicker or by passing starting coordinates. The resulting coordinates are returned and allow for the isolation of an ROI by cropping out a window around it for each time step. To account for local motions and deviations from the rotation model, the pipeline provides an optional recentering function that refines the feature position centering the window around the darkest feature in the cropped image. This is done by smoothening the ROI with a Gaussian and then finding the center of mass of the largest feature. The extracted ROIs can be visualized in time-summed strips, as shown in Figure \autoref{fig:strip}. This series of crops can then be used for segmentation maps (#sec:segmentation) or further analysis.
+This module is based on the processes laid out in [@loessnitz2025]. A core functionality is based on a [@sunpy_community2020] model to compute the expected position of a solar feature over a time series for a given start position, which can be selected via an interactive clicker or by passing starting coordinates. The resulting coordinates are returned and allow for the isolation of an ROI by cropping out a window around it for each time step. To account for local motions and deviations from the rotation model, the pipeline provides an optional recentering function that refines the feature position centering the window around the darkest feature in the cropped image. This is done by smoothening the ROI with a Gaussian and then finding the center of mass of the largest feature. The extracted ROIs can be visualized in time-summed strips, as shown in Figure \autoref{fig:strip}. This series of crops can then be used for segmentation maps (see [Segmentation](#sec:segmentation)) or further analysis.
   
 
 ```python
