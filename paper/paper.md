@@ -54,8 +54,7 @@ primarily designed for use with data from the Helioseismic and Magnetic Imager
 aboard SDO, although the methods are not instrument-specific. The pipeline
 enables the identification and tracking of arbitrary fields of view over time.
 While initial applications have focused on photospheric features such as sunspots and plages, the implemented
-procedures are equally valid for other types of solar features such as
-networks and filaments.
+procedures are equally valid for other types of solar features.
 
 *Corresponding author: Alexander G.M. Pietrow ([apietrow@aip.de](mailto:apietrow@aip.de))*
 
@@ -174,7 +173,7 @@ This function implements radial-profile subtraction to remove the center-to-limb
 intensity profile for HMI continuum and AIA 1600\ Å and 1700\ Å observations, 
 which is essential for reliable intensity thresholding across
 the full solar disk. Limb darkening is a radiative transfer effect induced by viewing geometry
-that allows the observer to look deeper into the atmosphere at the center of the solar disc 
+that allows the observer to look deeper into the atmosphere at the center of the solar disk 
 than at the limb, where the line of sight passes through the atmosphere at an angle. The decreasing 
 temperature with height in the solar photosphere results in a darker limb and a 
 brighter center [@Foukal2004; @Gray2005]. Removing this gradient is therefore necessary
