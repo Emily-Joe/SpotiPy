@@ -100,7 +100,7 @@ listed in Table 1.
 Table 1: HMI and AIA full-disk data products and passbands accessible via the downloading module.
 
 | Instrument | Observable | Supported JSOC Series |
-| :--- | :----------------------------- | :------------------------- |
+| :------ | :----------------------------- | :------------------------- |
 | HMI | Continuum Intensity | `hmi.Ic_45s`, `hmi.Ic_720s` |
 | HMI | Continuum Intensity (Flattened) | `hmi.Ic_nolimbDark_720s` |
 | HMI | Line width | `hmi.Lw_45s`, `hmi.Lw_720s` |
