@@ -8,7 +8,7 @@ import os
 import numpy as np
 import numpy.ma as ma
 import matplotlib
-matplotlib.use("Agg")
+#matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import cv2
 import astropy.io.fits as f
@@ -305,7 +305,7 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
 
         # STATIC STRIP (no animation)
         if not animate:
-            fig, ax = plt.subplots(figsize=(12, 3))
+            fig, ax = plt.subplots(figsize=(8, 4))
 
             ax.imshow(
                 strip_img,
@@ -337,16 +337,14 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
                 print('Done!')
 
             plt.tight_layout()
-            plt.show()
 
+            # Save FIRST, before the figure is destroyed by plt.show()
             if save_path is not None:
-                yn = input("Save strip? (y/n): ").strip().lower()
-                if yn == 'y':
-                    plt.savefig(
-                        os.path.join(save_path, 'time_summed_strip.png'),
-                        dpi=300
-                    )
-                    print("Saved.")
+                out_file = os.path.join(save_path, 'time_summed_strip.pdf')
+                plt.savefig(out_file, dpi=300)
+                print(f"Saved automatically to {out_file}.")
+
+            plt.show()
 
             plt.close(fig)
             return strip_img, None
@@ -357,7 +355,7 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
         print('Drawing animation frames...')
 
         for idx in range(len(tracks)):
-            fig, ax = plt.subplots(figsize=(12, 3))
+            fig, ax = plt.subplots(figsize=(8, 4))
             canvas = FigureCanvas(fig)
 
             ax.imshow(
@@ -410,7 +408,7 @@ def strip(series, directory, tracks, strip_height_arcsec=None, frame_size=None, 
             img = np.flipud(np.fliplr(img))
             strip_img = img[y_min:y_max, :]
 
-            fig, ax = plt.subplots(figsize=(12, 3))
+            fig, ax = plt.subplots(figsize=(8, 4))
             canvas = FigureCanvas(fig)
 
 
