@@ -3,6 +3,7 @@
 [![JOSS Status](https://joss.theoj.org/papers/a6818174542289139f72787834526017/status.svg)](https://joss.theoj.org/papers/a6818174542289139f72787834526017)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://readthedocs.org/projects/spotipy/badge/?version=latest)](https://spotipy.readthedocs.io/)
 
 SpotiPy is a modular Python framework for the analysis of sunspot center-to-limb variations (CLV). It provides an interactive pipeline for downloading, aligning, segmenting, and extracting physical quantities from SDO/HMI and AIA observations of solar active regions across five observables:
 
@@ -40,6 +41,13 @@ SpotiPy is designed to be fully modular. You can run the complete pipeline end-t
   * `spotipy.gui_tools` — Interactive GUI for manual selection of the starting coordinates of a solar feature
 
 ---
+## Documentation
+
+The full documentation, including installation instructions, tutorials, references, and example workflows, is available on **Read the Docs**:
+
+[https://spotipy.readthedocs.io/](https://spotipy-docs.readthedocs.io/en/stable/)
+
+
 
 ## Dependencies
 
