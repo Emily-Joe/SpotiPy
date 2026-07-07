@@ -151,7 +151,6 @@ HMI generally provides data series with cadences of 45 or 720 seconds. It offers
 | hmi.Ic_45s                 | hmi.Lw_45s     | hmi.Ld_45s     | hmi.M_45s            | hmi.V_45s            |
 | hmi.Ic_720s                | hmi.Lw_720s    | hmi.Ld_720s    | hmi.M_720s           | hmi.V_720s           |
 | hmi.Ic_nolimbDark_720s     |                |                |                      |                      |
-| hmi.Ic_nolimbDark_720s_nrt |                |                |                      |                      |
 
 ### 2. AIA Observables
 
