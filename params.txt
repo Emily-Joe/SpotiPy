@@ -10,6 +10,12 @@ CADENCE = 24
 EMAIL = your.email@example.com
 
 # --- Geometry & Tracking ---
+# Tracking Mode (optional, set to either:
+# = largest (default, track the largest feature in frame, i.e. single spot)
+# = evolving (allows for all scattered active regions/multiple features to be tracked)
+
+TRACKING_MODE = largest
+
 # Where the spot is roughly located (in arcsec) at the start date
 X_START_ARCSEC = -927
 Y_START_ARCSEC = 290
